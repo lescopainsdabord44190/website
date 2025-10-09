@@ -22,7 +22,7 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-20">
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <img src="/couleurs.png" alt="Logo" className="h-12 w-auto" />
+            <img src="/logo.png" alt="Logo" className="h-12 w-auto" />
             <div className="flex flex-col">
               <span className="font-bold text-xl text-[#328fce]">
                 {settings.site_title || 'Les copains d\'abord'}

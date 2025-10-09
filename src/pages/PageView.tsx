@@ -1,4 +1,5 @@
 import { usePageBySlug } from '../hooks/usePages';
+import { SafeHtml } from '../components/SafeHtml';
 
 interface PageViewProps {
   slug: string;
@@ -51,17 +52,23 @@ export function PageView({ slug }: PageViewProps) {
                 page.content.map((block: any, index: number) => {
                   if (block.type === 'paragraph') {
                     return (
-                      <p key={index} className="mb-4 text-gray-700 leading-relaxed">
-                        {block.content}
-                      </p>
+                      <SafeHtml
+                        key={index}
+                        as="p"
+                        className="mb-4 text-gray-700 leading-relaxed"
+                        html={block.content}
+                      />
                     );
                   }
                   if (block.type === 'heading') {
                     const HeadingTag = `h${block.level || 2}` as keyof JSX.IntrinsicElements;
                     return (
-                      <HeadingTag key={index} className="font-bold text-gray-800 mt-8 mb-4">
-                        {block.content}
-                      </HeadingTag>
+                      <SafeHtml
+                        key={index}
+                        as={HeadingTag}
+                        className="font-bold text-gray-800 mt-8 mb-4"
+                        html={block.content}
+                      />
                     );
                   }
                   if (block.type === 'image') {

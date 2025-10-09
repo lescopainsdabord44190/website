@@ -9,7 +9,7 @@ export function Footer() {
       <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <h3 className="font-bold text-lg mb-4">Les copains d'abord</h3>
+            <img src="/logo-white.png" alt="Logo Les copains d'abord" className="h-12 w-auto" />
             <p className="text-white/90 text-sm leading-relaxed">
               Accueil de loisirs pour enfants à Gétigné. Un lieu où vos enfants s'épanouissent dans la joie et la bonne humeur.
             </p>

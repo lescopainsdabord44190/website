@@ -188,8 +188,8 @@ export function ContactPage() {
                 <h3 className="text-xl font-bold mb-4 text-gray-800">Horaires d'ouverture</h3>
                 <div className="space-y-2 text-gray-600">
                   <p className="flex justify-between">
-                    <span className="font-medium">Lundi - Vendredi</span>
-                    <span>7h30 - 18h30</span>
+                    <span className="font-medium">Mercredi</span>
+                    <span>7h - 19h</span>
                   </p>
                   <p className="flex justify-between">
                     <span className="font-medium">Vacances scolaires</span>
@@ -200,7 +200,7 @@ export function ContactPage() {
 
               <div className="relative rounded-2xl overflow-hidden shadow-lg h-64">
                 <img
-                  src="/duo épaule.png"
+                  src="/illustrations/mascottes/mascotte 2.png"
                   alt="Mascotte"
                   className="absolute bottom-0 right-4 w-32 h-32 object-contain z-10"
                 />

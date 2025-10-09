@@ -5,9 +5,10 @@ interface LinkProps {
   children: ReactNode;
   className?: string;
   onClick?: () => void;
+  target?: string;
 }
 
-export function Link({ href, children, className = '', onClick }: LinkProps) {
+export function Link({ href, children, className = '', onClick, target }: LinkProps) {
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     if (onClick) onClick();
@@ -16,7 +17,7 @@ export function Link({ href, children, className = '', onClick }: LinkProps) {
   };
 
   return (
-    <a href={href} className={className} onClick={handleClick}>
+    <a href={href} className={className} onClick={handleClick} target={target}>
       {children}
     </a>
   );
