@@ -11,6 +11,7 @@ export interface Page {
   order_index: number;
   is_active: boolean;
   show_in_menu: boolean;
+  image_url?: string | null;
   created_at: string;
   updated_at: string;
 }

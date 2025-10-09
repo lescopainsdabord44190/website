@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, X } from 'lucide-react';
+import { Save, X, Upload, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { RichTextEditor } from '../../components/RichTextEditor';
 import { useAuth } from '../../contexts/AuthContext';
@@ -21,24 +21,50 @@ export function PageEditor({ page, onSave, onCancel }: PageEditorProps) {
     order_index: 0,
     is_active: true,
     show_in_menu: true,
+    image_url: null as string | null,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [parentPages, setParentPages] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (page) {
-      setFormData({
-        title: page.title || '',
-        slug: page.slug || '',
-        meta_description: page.meta_description || '',
-        content: page.content || [],
-        parent_id: page.parent_id || null,
-        order_index: page.order_index || 0,
-        is_active: page.is_active ?? true,
-        show_in_menu: page.show_in_menu ?? true,
-      });
-    }
+    const loadPageData = async () => {
+      if (page?.id) {
+        setLoading(true);
+        try {
+          const { data, error } = await supabase
+            .from('pages')
+            .select('*')
+            .eq('id', page.id)
+            .single();
+
+          if (error) throw error;
+
+          if (data) {
+            setFormData({
+              title: data.title || '',
+              slug: data.slug || '',
+              meta_description: data.meta_description || '',
+              content: data.content || [],
+              parent_id: data.parent_id || null,
+              order_index: data.order_index || 0,
+              is_active: data.is_active ?? true,
+              show_in_menu: data.show_in_menu ?? true,
+              image_url: data.image_url || null,
+            });
+          }
+        } catch (err) {
+          console.error('Error loading page:', err);
+          setError('Erreur lors du chargement de la page');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadPageData();
     fetchParentPages();
   }, [page]);
 
@@ -71,6 +97,46 @@ export function PageEditor({ page, onSave, onCancel }: PageEditorProps) {
     if (!page) {
       setFormData((prev) => ({ ...prev, slug: generateSlug(title) }));
     }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Veuillez sélectionner une image');
+      return;
+    }
+
+    setUploading(true);
+    setError('');
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `covers/${fileName}`;
+
+      const { error: uploadError, data } = await supabase.storage
+        .from('page_assets')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('page_assets')
+        .getPublicUrl(filePath);
+
+      setFormData({ ...formData, image_url: publicUrl });
+    } catch (err: any) {
+      console.error('Error uploading image:', err);
+      setError('Erreur lors de l\'upload de l\'image');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData({ ...formData, image_url: null });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,6 +175,14 @@ export function PageEditor({ page, onSave, onCancel }: PageEditorProps) {
       setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#328fce]"></div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -186,6 +260,48 @@ export function PageEditor({ page, onSave, onCancel }: PageEditorProps) {
           rows={2}
           placeholder="Description pour les moteurs de recherche"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Image de couverture
+        </label>
+        {formData.image_url ? (
+          <div className="relative">
+            <img
+              src={formData.image_url}
+              alt="Cover"
+              className="w-full h-48 object-cover rounded-lg"
+            />
+            <button
+              type="button"
+              onClick={handleRemoveImage}
+              className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+              <Upload className="w-10 h-10 text-gray-400 mb-3" />
+              <p className="mb-2 text-sm text-gray-500">
+                <span className="font-semibold">Cliquez pour uploader</span> ou glissez-déposez
+              </p>
+              <p className="text-xs text-gray-500">PNG, JPG, WEBP (MAX. 5MB)</p>
+            </div>
+            <input
+              type="file"
+              className="hidden"
+              accept="image/*"
+              onChange={handleImageUpload}
+              disabled={uploading}
+            />
+          </label>
+        )}
+        {uploading && (
+          <p className="mt-2 text-sm text-gray-500">Upload en cours...</p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -2,8 +2,9 @@ import { Link } from './Link';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { usePages } from '../hooks/usePages';
 import { useAuth } from '../contexts/AuthContext';
-import { Menu, X, LogOut, Settings } from 'lucide-react';
+import { Menu, X, LogOut, Settings, User } from 'lucide-react';
 import { useState } from 'react';
+import { UserMenu } from './UserMenu';
 
 export function Header() {
   const { settings } = useSiteSettings();
@@ -49,24 +50,9 @@ export function Header() {
             <Link href="/contact" className="text-gray-700 hover:text-[#328fce] transition-colors font-medium">
               Contact
             </Link>
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="flex items-center gap-2 text-[#ff6243] hover:text-[#ff9fa8] transition-colors font-medium"
-              >
-                <Settings className="w-4 h-4" />
-                Admin
-              </Link>
-            )}
-            {user && (
-              <button
-                onClick={() => signOut()}
-                className="flex items-center gap-2 text-gray-700 hover:text-[#ff6243] transition-colors font-medium"
-              >
-                <LogOut className="w-4 h-4" />
-                Déconnexion
-              </button>
-            )}
+            {user ? (
+              <UserMenu />
+            ) : null}
           </nav>
 
           <button
@@ -104,27 +90,37 @@ export function Header() {
               >
                 Contact
               </Link>
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  className="flex items-center gap-2 text-[#ff6243] hover:text-[#ff9fa8] transition-colors font-medium py-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  <Settings className="w-4 h-4" />
-                  Admin
-                </Link>
-              )}
               {user && (
-                <button
-                  onClick={() => {
-                    signOut();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex items-center gap-2 text-gray-700 hover:text-[#ff6243] transition-colors font-medium py-2 text-left"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Déconnexion
-                </button>
+                <>
+                  <Link
+                    href="/profile"
+                    className="flex items-center gap-2 text-gray-700 hover:text-[#328fce] transition-colors font-medium py-2"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <User className="w-4 h-4" />
+                    Mon Profil
+                  </Link>
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center gap-2 text-[#ff6243] hover:text-[#ff9fa8] transition-colors font-medium py-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Settings className="w-4 h-4" />
+                      Administration
+                    </Link>
+                  )}
+                  <button
+                    onClick={() => {
+                      signOut();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="flex items-center gap-2 text-gray-700 hover:text-[#ff6243] transition-colors font-medium py-2 text-left"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Déconnexion
+                  </button>
+                </>
               )}
             </div>
           </nav>
