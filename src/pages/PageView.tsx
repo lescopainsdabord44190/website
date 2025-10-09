@@ -1,11 +1,10 @@
+import { useLocation } from 'react-router';
 import { usePageBySlug } from '../hooks/usePages';
 import { SafeHtml } from '../components/SafeHtml';
 
-interface PageViewProps {
-  slug: string;
-}
-
-export function PageView({ slug }: PageViewProps) {
+export function PageView() {
+  const location = useLocation();
+  const slug = location.pathname;
   const { page, loading } = usePageBySlug(slug);
 
   if (loading) {

@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn } from 'lucide-react';
 
 export function LoginPage() {
   const { signIn } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,8 +21,7 @@ export function LoginPage() {
       if (error) {
         setError('Email ou mot de passe incorrect');
       } else {
-        window.history.pushState({}, '', '/admin');
-        window.dispatchEvent(new PopStateEvent('popstate'));
+        navigate('/admin');
       }
     } catch (err) {
       setError('Une erreur est survenue');

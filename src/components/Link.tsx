@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { Link as RouterLink } from 'react-router';
 
 interface LinkProps {
   href: string;
@@ -9,16 +10,20 @@ interface LinkProps {
 }
 
 export function Link({ href, children, className = '', onClick, target }: LinkProps) {
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    if (onClick) onClick();
-    window.history.pushState({}, '', href);
-    window.dispatchEvent(new PopStateEvent('popstate'));
-  };
+  // Si c'est un lien externe (commence par http:// ou https://), utiliser un <a> normal
+  const isExternal = href.startsWith('http://') || href.startsWith('https://');
+
+  if (isExternal || target === '_blank') {
+    return (
+      <a href={href} className={className} onClick={onClick} target={target} rel={target === '_blank' ? 'noopener noreferrer' : undefined}>
+        {children}
+      </a>
+    );
+  }
 
   return (
-    <a href={href} className={className} onClick={handleClick} target={target}>
+    <RouterLink to={href} className={className} onClick={onClick}>
       {children}
-    </a>
+    </RouterLink>
   );
 }

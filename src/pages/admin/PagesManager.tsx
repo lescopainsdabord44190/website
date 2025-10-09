@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, EyeOff, FileText } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { PageEditor } from './PageEditor';
 

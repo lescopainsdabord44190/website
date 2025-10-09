@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Bold, Italic, Heading2, List, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
+import { Heading2, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface RichTextEditorProps {

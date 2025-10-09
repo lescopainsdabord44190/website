@@ -28,7 +28,7 @@ export function Header() {
                 {settings.site_title || 'Les copains d\'abord'}
               </span>
               <span className="text-sm text-[#84c19e]">
-                {settings.site_subtitle || 'Accueil de loisirs'}
+                {settings.site_subtitle || 'Accueil de loisirs associatif'}
               </span>
             </div>
           </Link>

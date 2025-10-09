@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { FileText, Settings, Plus } from 'lucide-react';
+import { FileText, Settings } from 'lucide-react';
 import { PagesManager } from './PagesManager';
 import { SettingsManager } from './SettingsManager';
 
