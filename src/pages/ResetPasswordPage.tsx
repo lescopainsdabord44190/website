@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router';
 import { supabase } from '../lib/supabase';
 import { Lock, Check, AlertCircle } from 'lucide-react';
 import { PasswordInput } from '../components/PasswordInput';
+import { useTracking, TrackingEvent, TrackingProperty } from '../hooks/useTracking';
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
+  const { trackEvent } = useTracking();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,11 +36,22 @@ export function ResetPasswordPage() {
 
       if (updateError) {
         setError('Erreur lors de la modification du mot de passe');
+        trackEvent(TrackingEvent.PASSWORD_RESET_COMPLETED, {
+          [TrackingProperty.SUCCESS]: false,
+          [TrackingProperty.ERROR_MESSAGE]: updateError.message,
+        });
       } else {
+        trackEvent(TrackingEvent.PASSWORD_RESET_COMPLETED, {
+          [TrackingProperty.SUCCESS]: true,
+        });
         navigate('/profile');
       }
     } catch (err) {
       setError('Une erreur est survenue');
+      trackEvent(TrackingEvent.PASSWORD_RESET_COMPLETED, {
+        [TrackingProperty.SUCCESS]: false,
+        [TrackingProperty.ERROR_MESSAGE]: (err as Error).message,
+      });
     } finally {
       setLoading(false);
     }

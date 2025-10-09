@@ -5,10 +5,12 @@ import { siFacebook, siInstagram } from 'simple-icons';
 import { EditorJSRenderer } from './EditorJSRenderer';
 import { OutputData } from '@editorjs/editorjs';
 import { Link } from './Link';
+import { useTracking, TrackingEvent, TrackingProperty } from '../hooks/useTracking';
 
 export function Footer() {
   const { settings } = useSiteSettings();
   const { pages } = usePages();
+  const { trackEvent } = useTracking();
   
   const footerPages = pages.filter(page => page.is_active && page.show_in_footer);
 
@@ -49,6 +51,10 @@ export function Footer() {
               {settings.contact_phone && (
                 <a
                   href={`tel:${settings.contact_phone}`}
+                  onClick={() => trackEvent(TrackingEvent.PHONE_CLICKED, {
+                    [TrackingProperty.LOCATION]: 'footer',
+                    [TrackingProperty.PHONE_NUMBER]: settings.contact_phone,
+                  })}
                   className="flex items-center gap-2 text-white/90 hover:text-white transition-colors text-sm"
                 >
                   <Phone className="w-4 h-4" />
@@ -73,6 +79,10 @@ export function Footer() {
                     href={settings.social_facebook}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => trackEvent(TrackingEvent.FACEBOOK_CLICKED, {
+                      [TrackingProperty.LOCATION]: 'footer',
+                      [TrackingProperty.SOCIAL_NETWORK]: 'facebook',
+                    })}
                     className="flex items-center justify-center w-9 h-9 bg-white/10 hover:bg-white/20 rounded-full transition-all hover:scale-110"
                     aria-label="Facebook"
                   >
@@ -92,6 +102,10 @@ export function Footer() {
                     href={settings.social_instagram}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => trackEvent(TrackingEvent.INSTAGRAM_CLICKED, {
+                      [TrackingProperty.LOCATION]: 'footer',
+                      [TrackingProperty.SOCIAL_NETWORK]: 'instagram',
+                    })}
                     className="flex items-center justify-center w-9 h-9 bg-white/10 hover:bg-white/20 rounded-full transition-all hover:scale-110"
                     aria-label="Instagram"
                   >

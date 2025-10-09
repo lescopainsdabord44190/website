@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Mail, ArrowLeft, Check, AlertCircle } from 'lucide-react';
 import { Link } from '../components/Link';
+import { useTracking, TrackingEvent, TrackingProperty } from '../hooks/useTracking';
 
 export function ForgotPasswordPage() {
+  const { trackEvent } = useTracking();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -21,11 +23,22 @@ export function ForgotPasswordPage() {
 
       if (error) {
         setError('Une erreur est survenue. Vérifiez votre adresse email.');
+        trackEvent(TrackingEvent.PASSWORD_RESET_REQUESTED, {
+          [TrackingProperty.SUCCESS]: false,
+          [TrackingProperty.ERROR_MESSAGE]: error.message,
+        });
       } else {
         setSuccess(true);
+        trackEvent(TrackingEvent.PASSWORD_RESET_REQUESTED, {
+          [TrackingProperty.SUCCESS]: true,
+        });
       }
     } catch (err) {
       setError('Une erreur est survenue');
+      trackEvent(TrackingEvent.PASSWORD_RESET_REQUESTED, {
+        [TrackingProperty.SUCCESS]: false,
+        [TrackingProperty.ERROR_MESSAGE]: (err as Error).message,
+      });
     } finally {
       setLoading(false);
     }

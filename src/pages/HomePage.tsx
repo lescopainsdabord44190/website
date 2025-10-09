@@ -4,9 +4,11 @@ import { Link } from '../components/Link';
 import { SafeHtml } from '../components/SafeHtml';
 import { EditorJSRenderer } from '../components/EditorJSRenderer';
 import { OutputData } from '@editorjs/editorjs';
+import { useTracking, TrackingEvent, TrackingProperty } from '../hooks/useTracking';
 
 export function HomePage() {
   const { settings } = useSiteSettings();
+  const { trackEvent } = useTracking();
 
   return (
     <div className="min-h-screen">
@@ -45,6 +47,10 @@ export function HomePage() {
                 {settings.contact_phone && (
                   <a
                     href={`tel:${settings.contact_phone}`}
+                    onClick={() => trackEvent(TrackingEvent.PHONE_CLICKED, {
+                      [TrackingProperty.LOCATION]: 'home_page',
+                      [TrackingProperty.PHONE_NUMBER]: settings.contact_phone,
+                    })}
                     className="flex items-center justify-center gap-2 bg-[#ff6243] text-white px-6 py-3 rounded-full hover:bg-[#ff9fa8] transition-all hover:scale-105 font-medium shadow-lg"
                   >
                     <Phone className="w-5 h-5" />
@@ -54,6 +60,9 @@ export function HomePage() {
                 <Link
                   href="https://getigne.carteplus.fr/"
                   target='_blank'
+                  onClick={() => trackEvent(TrackingEvent.PORTAL_CLICKED, {
+                    [TrackingProperty.LOCATION]: 'home_page',
+                  })}
                   className="flex items-center justify-center gap-2 bg-[#84c19e] text-white px-6 py-3 rounded-full hover:bg-[#328fce] transition-all hover:scale-105 font-medium shadow-lg"
                 >
                   <Clock className="w-5 h-5" />

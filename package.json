@@ -26,6 +26,7 @@
     "@vercel/speed-insights": "^1.2.0",
     "dompurify": "^3.2.7",
     "lucide-react": "^0.344.0",
+    "posthog-js": "^1.274.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router": "^7.9.4",

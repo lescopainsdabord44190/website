@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { useTracking, TrackingEvent, TrackingProperty } from '../hooks/useTracking';
 
 interface AuthContextType {
   user: User | null;
@@ -18,6 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { trackEvent, identifyUser, resetUser } = useTracking();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -107,12 +109,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
+      if (!error && data.user) {
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+
+        identifyUser(data.user.id, {
+          email: data.user.email,
+          [TrackingProperty.USER_ROLE]: roleData ? 'admin' : 'user',
+        });
+
+        trackEvent(TrackingEvent.USER_LOGGED_IN, {
+          [TrackingProperty.USER_ROLE]: roleData ? 'admin' : 'user',
+          [TrackingProperty.SUCCESS]: true,
+        });
+      } else if (error) {
+        trackEvent(TrackingEvent.USER_LOGGED_IN, {
+          [TrackingProperty.SUCCESS]: false,
+          [TrackingProperty.ERROR_MESSAGE]: error.message,
+        });
+      }
+
       return { error };
     } catch (error) {
+      trackEvent(TrackingEvent.USER_LOGGED_IN, {
+        [TrackingProperty.SUCCESS]: false,
+        [TrackingProperty.ERROR_MESSAGE]: (error as Error).message,
+      });
       return { error: error as Error };
     }
   };
@@ -130,6 +161,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    trackEvent(TrackingEvent.USER_LOGGED_OUT);
+    resetUser();
     await supabase.auth.signOut();
   };
 

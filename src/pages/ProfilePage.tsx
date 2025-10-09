@@ -5,10 +5,12 @@ import { supabase } from '../lib/supabase';
 import { Lock, Check, AlertCircle, Camera, Upload, Trash2 } from 'lucide-react';
 import { PasswordInput } from '../components/PasswordInput';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { useTracking, TrackingEvent, TrackingProperty } from '../hooks/useTracking';
 
 export function ProfilePage() {
   const { user, signOut, refreshAvatar } = useAuth();
   const navigate = useNavigate();
+  const { trackEvent } = useTracking();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -231,8 +233,17 @@ export function ProfilePage() {
         setError('Impossible de supprimer le compte. Veuillez réessayer.');
         setIsDeleting(false);
         setShowDeleteDialog(false);
+        
+        trackEvent(TrackingEvent.ACCOUNT_DELETED, {
+          [TrackingProperty.SUCCESS]: false,
+          [TrackingProperty.ERROR_MESSAGE]: deleteError.message,
+        });
         return;
       }
+
+      trackEvent(TrackingEvent.ACCOUNT_DELETED, {
+        [TrackingProperty.SUCCESS]: true,
+      });
 
       // Déconnecter l'utilisateur et rediriger vers la page d'accueil
       await signOut();
@@ -242,6 +253,11 @@ export function ProfilePage() {
       setError('Une erreur est survenue lors de la suppression du compte');
       setIsDeleting(false);
       setShowDeleteDialog(false);
+      
+      trackEvent(TrackingEvent.ACCOUNT_DELETED, {
+        [TrackingProperty.SUCCESS]: false,
+        [TrackingProperty.ERROR_MESSAGE]: (err as Error).message,
+      });
     }
   };
 

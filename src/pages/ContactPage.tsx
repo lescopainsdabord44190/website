@@ -3,9 +3,11 @@ import { Mail, Phone, MapPin, Send } from 'lucide-react';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { EditorJSRenderer } from '../components/EditorJSRenderer';
 import { OutputData } from '@editorjs/editorjs';
+import { useTracking, TrackingEvent, TrackingProperty } from '../hooks/useTracking';
 
 export function ContactPage() {
   const { settings } = useSiteSettings();
+  const { trackEvent } = useTracking();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -39,10 +41,21 @@ export function ContactPage() {
 
       setStatus('success');
       setFormData({ name: '', email: '', subject: '', message: '' });
+      
+      trackEvent(TrackingEvent.CONTACT_FORM_SUBMITTED, {
+        [TrackingProperty.SUCCESS]: true,
+        [TrackingProperty.FORM_TYPE]: 'contact',
+      });
     } catch (error) {
       console.error('Error sending message:', error);
       setStatus('error');
       setErrorMessage('Une erreur est survenue lors de l\'envoi du message. Veuillez réessayer.');
+      
+      trackEvent(TrackingEvent.CONTACT_FORM_SUBMITTED, {
+        [TrackingProperty.SUCCESS]: false,
+        [TrackingProperty.FORM_TYPE]: 'contact',
+        [TrackingProperty.ERROR_MESSAGE]: (error as Error).message,
+      });
     }
   };
 
@@ -153,6 +166,10 @@ export function ContactPage() {
                   {settings.contact_phone && (
                     <a
                       href={`tel:${settings.contact_phone}`}
+                      onClick={() => trackEvent(TrackingEvent.PHONE_CLICKED, {
+                        [TrackingProperty.LOCATION]: 'contact_page',
+                        [TrackingProperty.PHONE_NUMBER]: settings.contact_phone,
+                      })}
                       className="flex items-start gap-3 hover:opacity-80 transition-opacity"
                     >
                       <Phone className="w-6 h-6 mt-1 flex-shrink-0" />
