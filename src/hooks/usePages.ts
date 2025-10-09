@@ -11,9 +11,27 @@ export interface Page {
   order_index: number;
   is_active: boolean;
   show_in_menu: boolean;
+  show_in_footer?: boolean;
+  show_toc?: boolean;
   image_url?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export function buildFullPath(pageId: string, allPages: Page[]): string {
+  const path: string[] = [];
+  let currentPage = allPages.find((p) => p.id === pageId);
+  
+  while (currentPage) {
+    path.unshift(currentPage.slug);
+    if (currentPage.parent_id) {
+      currentPage = allPages.find((p) => p.id === currentPage!.parent_id);
+    } else {
+      currentPage = undefined;
+    }
+  }
+  
+  return '/' + path.join('/');
 }
 
 export function usePages() {
@@ -55,15 +73,28 @@ export function usePageBySlug(fullSlug: string) {
         const slugParts = fullSlug.split('/').filter(Boolean);
         const targetSlug = slugParts[slugParts.length - 1];
 
-        const { data, error } = await supabase
+        const { data: allPages, error: pagesError } = await supabase
           .from('pages')
           .select('*')
-          .eq('slug', targetSlug)
-          .eq('is_active', true)
-          .maybeSingle();
+          .eq('is_active', true);
 
-        if (error) throw error;
-        setPage(data);
+        if (pagesError) throw pagesError;
+
+        const candidatePage = allPages?.find((p) => p.slug === targetSlug);
+        
+        if (!candidatePage) {
+          setPage(null);
+          return;
+        }
+
+        const expectedPath = buildFullPath(candidatePage.id, allPages || []);
+        const actualPath = '/' + slugParts.join('/');
+        
+        if (expectedPath === actualPath) {
+          setPage(candidatePage);
+        } else {
+          setPage(null);
+        }
       } catch (error) {
         console.error('Error fetching page:', error);
         setPage(null);

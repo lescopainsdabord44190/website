@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { supabase } from '../lib/supabase';
 import { Lock, Check, AlertCircle } from 'lucide-react';
+import { PasswordInput } from '../components/PasswordInput';
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -90,13 +91,10 @@ export function ResetPasswordPage() {
                 <label htmlFor="newPassword" className="block text-sm font-semibold text-gray-700 mb-2">
                   Nouveau mot de passe
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   id="newPassword"
-                  required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#328fce] focus:border-[#328fce] outline-none transition-all text-gray-800"
                   placeholder="••••••••"
                   minLength={6}
                 />
@@ -107,13 +105,10 @@ export function ResetPasswordPage() {
                 <label htmlFor="confirmPassword" className="block text-sm font-semibold text-gray-700 mb-2">
                   Confirmer le mot de passe
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   id="confirmPassword"
-                  required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#328fce] focus:border-[#328fce] outline-none transition-all text-gray-800"
                   placeholder="••••••••"
                 />
               </div>

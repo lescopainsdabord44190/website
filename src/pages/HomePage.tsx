@@ -2,6 +2,8 @@ import { useSiteSettings } from '../hooks/useSiteSettings';
 import { Phone, Clock } from 'lucide-react';
 import { Link } from '../components/Link';
 import { SafeHtml } from '../components/SafeHtml';
+import { EditorJSRenderer } from '../components/EditorJSRenderer';
+import { OutputData } from '@editorjs/editorjs';
 
 export function HomePage() {
   const { settings } = useSiteSettings();
@@ -29,11 +31,15 @@ export function HomePage() {
                 className="text-4xl md:text-5xl font-bold mb-6 text-gray-800 leading-tight"
                 html={settings.home_hero_title || 'Bienvenue aux <em>Copains d\'abord</em>'}
               />
-              <SafeHtml
-                as="p"
-                className="text-lg md:text-xl text-gray-600 mb-8 leading-relaxed"
-                html={settings.home_hero_subtitle || 'L\'accueil de loisirs qui fait grandir vos enfants dans la joie et la bonne humeur !'}
-              />
+              {settings.home_hero_subtitle && (() => {
+                try {
+                  const content = JSON.parse(settings.home_hero_subtitle) as OutputData;
+                  return <EditorJSRenderer content={content} />;
+                } catch (e) {
+                  console.error('Error parsing home hero subtitle:', e);
+                  return null;
+                }
+              })()}
 
               <div className="flex flex-col sm:flex-row gap-4">
                 {settings.contact_phone && (
@@ -45,13 +51,6 @@ export function HomePage() {
                     {settings.contact_phone}
                   </a>
                 )}
-                <Link
-                  href="/horaires"
-                  className="flex items-center justify-center gap-2 bg-[#84c19e] text-white px-6 py-3 rounded-full hover:bg-[#328fce] transition-all hover:scale-105 font-medium shadow-lg"
-                >
-                  <Clock className="w-5 h-5" />
-                  Nos horaires: <strong>7h - 19h</strong>
-                </Link>
                 <Link
                   href="https://getigne.carteplus.fr/"
                   target='_blank'
@@ -76,7 +75,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="py-16 bg-white">
+      {/* <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-gradient-to-br from-[#84c19e] to-[#328fce] rounded-2xl p-8 text-white shadow-lg hover:shadow-xl transition-shadow">
@@ -110,9 +109,9 @@ export function HomePage() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
-      <section className="py-16 bg-gradient-to-br from-[#FEF5F0] to-white">
+      {/* <section className="py-16 bg-gradient-to-br from-[#FEF5F0] to-white">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gray-800">
             Rejoignez l'aventure des Copains d'abord
@@ -128,7 +127,7 @@ export function HomePage() {
             Contactez-nous
           </Link>
         </div>
-      </section>
+      </section> */}
     </div>
   );
 }

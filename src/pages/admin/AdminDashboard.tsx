@@ -1,12 +1,13 @@
-import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { FileText, Settings } from 'lucide-react';
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router';
 import { PagesManager } from './PagesManager';
+import { PageEditor } from './PageEditor';
 import { SettingsManager } from './SettingsManager';
 
 export function AdminDashboard() {
   const { user, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<'pages' | 'settings'>('pages');
+  const location = useLocation();
 
   if (!user || !isAdmin) {
     return (
@@ -19,6 +20,9 @@ export function AdminDashboard() {
     );
   }
 
+  const isPageRoute = location.pathname.startsWith('/admin/pages');
+  const isSettingsRoute = location.pathname.startsWith('/admin/settings');
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FEF5F0] to-white">
       <div className="container mx-auto px-4 py-8">
@@ -30,34 +34,39 @@ export function AdminDashboard() {
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="border-b border-gray-200">
             <nav className="flex">
-              <button
-                onClick={() => setActiveTab('pages')}
+              <Link
+                to="/admin/pages"
                 className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
-                  activeTab === 'pages'
+                  isPageRoute
                     ? 'border-b-2 border-[#328fce] text-[#328fce] bg-blue-50'
                     : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                 }`}
               >
                 <FileText className="w-5 h-5" />
                 Pages
-              </button>
-              <button
-                onClick={() => setActiveTab('settings')}
+              </Link>
+              <Link
+                to="/admin/settings"
                 className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
-                  activeTab === 'settings'
+                  isSettingsRoute
                     ? 'border-b-2 border-[#328fce] text-[#328fce] bg-blue-50'
                     : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
                 }`}
               >
                 <Settings className="w-5 h-5" />
                 Paramètres
-              </button>
+              </Link>
             </nav>
           </div>
 
           <div className="p-6">
-            {activeTab === 'pages' && <PagesManager />}
-            {activeTab === 'settings' && <SettingsManager />}
+            <Routes>
+              <Route index element={<Navigate to="/admin/pages" replace />} />
+              <Route path="pages" element={<PagesManager />} />
+              <Route path="pages/new" element={<PageEditor page={null} />} />
+              <Route path="pages/:id/edit" element={<PageEditor />} />
+              <Route path="settings" element={<SettingsManager />} />
+            </Routes>
           </div>
         </div>
       </div>

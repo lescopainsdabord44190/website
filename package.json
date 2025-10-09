@@ -11,6 +11,16 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json"
   },
   "dependencies": {
+    "@editorjs/checklist": "^1.6.0",
+    "@editorjs/delimiter": "^1.4.2",
+    "@editorjs/editorjs": "^2.31.0",
+    "@editorjs/header": "^2.8.8",
+    "@editorjs/image": "^2.10.3",
+    "@editorjs/list": "^2.0.8",
+    "@editorjs/paragraph": "^2.11.7",
+    "@editorjs/quote": "^2.7.6",
+    "@editorjs/table": "^2.4.5",
+    "@editorjs/warning": "^1.4.1",
     "@supabase/supabase-js": "^2.57.4",
     "@types/dompurify": "^3.0.5",
     "@vercel/speed-insights": "^1.2.0",
@@ -18,7 +28,8 @@
     "lucide-react": "^0.344.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router": "^7.9.4"
+    "react-router": "^7.9.4",
+    "simple-icons": "^15.16.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

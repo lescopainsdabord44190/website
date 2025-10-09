@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
 import { useSiteSettings } from '../hooks/useSiteSettings';
+import { EditorJSRenderer } from '../components/EditorJSRenderer';
+import { OutputData } from '@editorjs/editorjs';
 
 export function ContactPage() {
   const { settings } = useSiteSettings();
@@ -186,16 +188,27 @@ export function ContactPage() {
 
               <div className="bg-white rounded-2xl shadow-lg p-8">
                 <h3 className="text-xl font-bold mb-4 text-gray-800">Horaires d'ouverture</h3>
-                <div className="space-y-2 text-gray-600">
-                  <p className="flex justify-between">
-                    <span className="font-medium">Mercredi</span>
-                    <span>7h - 19h</span>
-                  </p>
-                  <p className="flex justify-between">
-                    <span className="font-medium">Vacances scolaires</span>
-                    <span>Nous contacter</span>
-                  </p>
-                </div>
+                {settings.contact_hours && (() => {
+                  try {
+                    const content = JSON.parse(settings.contact_hours) as OutputData;
+                    return (
+                      <EditorJSRenderer 
+                        content={content}
+                        className="[&_p]:text-gray-600 [&_p]:mb-2"
+                      />
+                    );
+                  } catch (e) {
+                    console.error('Error parsing contact hours:', e);
+                    return (
+                      <div className="space-y-2 text-gray-600">
+                        <p className="flex justify-between">
+                          <span className="font-medium">Mercredi</span>
+                          <span>7h15 - 19h</span>
+                        </p>
+                      </div>
+                    );
+                  }
+                })()}
               </div>
 
               <div className="relative rounded-2xl overflow-hidden shadow-lg h-64">

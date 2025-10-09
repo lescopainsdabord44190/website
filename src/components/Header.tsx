@@ -1,6 +1,6 @@
 import { Link } from './Link';
 import { useSiteSettings } from '../hooks/useSiteSettings';
-import { usePages } from '../hooks/usePages';
+import { usePages, buildFullPath } from '../hooks/usePages';
 import { useAuth } from '../contexts/AuthContext';
 import { Menu, X, LogOut, Settings, User } from 'lucide-react';
 import { useState } from 'react';
@@ -12,10 +12,10 @@ export function Header() {
   const { user, isAdmin, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const menuPages = pages.filter((page) => page.show_in_menu && !page.parent_id);
+  const menuPages = pages.filter((page) => page.is_active && page.show_in_menu && !page.parent_id);
 
   const buildPagePath = (page: typeof pages[0]): string => {
-    return `/${page.slug}`;
+    return buildFullPath(page.id, pages);
   };
 
   return (

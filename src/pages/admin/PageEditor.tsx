@@ -1,26 +1,34 @@
 import { useState, useEffect } from 'react';
 import { Save, X, Upload, Trash2 } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router';
 import { supabase } from '../../lib/supabase';
 import { RichTextEditor } from '../../components/RichTextEditor';
 import { useAuth } from '../../contexts/AuthContext';
+import { OutputData } from '@editorjs/editorjs';
+import { migrateOldContentToEditorJS } from '../../lib/contentMigration';
 
 interface PageEditorProps {
-  page: any | null;
-  onSave: () => void;
-  onCancel: () => void;
+  page?: any | null;
+  onSave?: () => void;
+  onCancel?: () => void;
 }
 
-export function PageEditor({ page, onSave, onCancel }: PageEditorProps) {
+export function PageEditor({ page: pageProp, onSave, onCancel }: PageEditorProps = {}) {
   const { user } = useAuth();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [page, setPage] = useState(pageProp);
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
     meta_description: '',
-    content: [] as any[],
+    content: null as OutputData | null,
     parent_id: null as string | null,
     order_index: 0,
     is_active: true,
     show_in_menu: true,
+    show_in_footer: false,
+    show_toc: true,
     image_url: null as string | null,
   });
   const [saving, setSaving] = useState(false);
@@ -31,27 +39,33 @@ export function PageEditor({ page, onSave, onCancel }: PageEditorProps) {
 
   useEffect(() => {
     const loadPageData = async () => {
-      if (page?.id) {
+      const pageId = id || page?.id;
+      
+      if (pageId) {
         setLoading(true);
         try {
           const { data, error } = await supabase
             .from('pages')
             .select('*')
-            .eq('id', page.id)
+            .eq('id', pageId)
             .single();
 
           if (error) throw error;
 
           if (data) {
+            setPage(data);
+            const content = data.content ? migrateOldContentToEditorJS(data.content) : null;
             setFormData({
               title: data.title || '',
               slug: data.slug || '',
               meta_description: data.meta_description || '',
-              content: data.content || [],
+              content,
               parent_id: data.parent_id || null,
               order_index: data.order_index || 0,
               is_active: data.is_active ?? true,
               show_in_menu: data.show_in_menu ?? true,
+              show_in_footer: data.show_in_footer ?? false,
+              show_toc: data.show_toc ?? true,
               image_url: data.image_url || null,
             });
           }
@@ -66,14 +80,13 @@ export function PageEditor({ page, onSave, onCancel }: PageEditorProps) {
 
     loadPageData();
     fetchParentPages();
-  }, [page]);
+  }, [id, page?.id]);
 
   const fetchParentPages = async () => {
     try {
       const { data, error } = await supabase
         .from('pages')
-        .select('id, title, slug')
-        .is('parent_id', null)
+        .select('id, title, slug, parent_id')
         .order('order_index');
 
       if (error) throw error;
@@ -81,6 +94,41 @@ export function PageEditor({ page, onSave, onCancel }: PageEditorProps) {
     } catch (error) {
       console.error('Error fetching parent pages:', error);
     }
+  };
+
+  const getDescendantIds = (pageId: string, pages: any[]): string[] => {
+    const descendants: string[] = [];
+    const children = pages.filter(p => p.parent_id === pageId);
+    
+    children.forEach(child => {
+      descendants.push(child.id);
+      descendants.push(...getDescendantIds(child.id, pages));
+    });
+    
+    return descendants;
+  };
+
+  const organizeParentPages = () => {
+    const buildHierarchy = (pages: any[], parentId: string | null = null, level: number = 0): any[] => {
+      const children = pages.filter(p => p.parent_id === parentId);
+      const result: any[] = [];
+      
+      children.forEach(child => {
+        result.push({ ...child, level });
+        result.push(...buildHierarchy(pages, child.id, level + 1));
+      });
+      
+      return result;
+    };
+
+    const hierarchy = buildHierarchy(parentPages);
+    
+    if (page?.id) {
+      const descendantIds = getDescendantIds(page.id, parentPages);
+      return hierarchy.filter(p => p.id !== page.id && !descendantIds.includes(p.id));
+    }
+    
+    return hierarchy.filter(p => p.id !== page?.id);
   };
 
   const generateSlug = (title: string) => {
@@ -116,7 +164,7 @@ export function PageEditor({ page, onSave, onCancel }: PageEditorProps) {
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `covers/${fileName}`;
 
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('page_assets')
         .upload(filePath, file);
 
@@ -167,12 +215,24 @@ export function PageEditor({ page, onSave, onCancel }: PageEditorProps) {
         if (error) throw error;
       }
 
-      onSave();
+      if (onSave) {
+        onSave();
+      } else {
+        navigate('/admin/pages');
+      }
     } catch (err: any) {
       console.error('Error saving page:', err);
       setError(err.message || 'Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    } else {
+      navigate('/admin/pages');
     }
   };
 
@@ -188,12 +248,12 @@ export function PageEditor({ page, onSave, onCancel }: PageEditorProps) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">
-          {page ? 'Modifier la page' : 'Nouvelle page'}
+          {page ? 'Modifier' : 'Nouvelle page'}
         </h2>
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={onCancel}
+            onClick={handleCancel}
             className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <X className="w-5 h-5" />
@@ -216,160 +276,183 @@ export function PageEditor({ page, onSave, onCancel }: PageEditorProps) {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-            Titre de la page *
-          </label>
-          <input
-            type="text"
-            id="title"
-            required
-            value={formData.title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none"
-            placeholder="Titre de la page"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="slug" className="block text-sm font-medium text-gray-700 mb-1">
-            Slug (URL) *
-          </label>
-          <input
-            type="text"
-            id="slug"
-            required
-            value={formData.slug}
-            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none"
-            placeholder="url-de-la-page"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="meta_description" className="block text-sm font-medium text-gray-700 mb-1">
-          Meta Description (SEO)
-        </label>
-        <textarea
-          id="meta_description"
-          value={formData.meta_description}
-          onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none resize-none"
-          rows={2}
-          placeholder="Description pour les moteurs de recherche"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Image de couverture
-        </label>
-        {formData.image_url ? (
-          <div className="relative">
-            <img
-              src={formData.image_url}
-              alt="Cover"
-              className="w-full h-48 object-cover rounded-lg"
-            />
-            <button
-              type="button"
-              onClick={handleRemoveImage}
-              className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        ) : (
-          <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              <Upload className="w-10 h-10 text-gray-400 mb-3" />
-              <p className="mb-2 text-sm text-gray-500">
-                <span className="font-semibold">Cliquez pour uploader</span> ou glissez-déposez
-              </p>
-              <p className="text-xs text-gray-500">PNG, JPG, WEBP (MAX. 5MB)</p>
-            </div>
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Colonne gauche - 2/3 */}
+        <div className="flex-1 lg:flex-[2] space-y-6">
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+              Titre de la page *
+            </label>
             <input
-              type="file"
-              className="hidden"
-              accept="image/*"
-              onChange={handleImageUpload}
-              disabled={uploading}
+              type="text"
+              id="title"
+              required
+              value={formData.title}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none"
+              placeholder="Titre de la page"
             />
-          </label>
-        )}
-        {uploading && (
-          <p className="mt-2 text-sm text-gray-500">Upload en cours...</p>
-        )}
-      </div>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div>
-          <label htmlFor="parent_id" className="block text-sm font-medium text-gray-700 mb-1">
-            Page parente
-          </label>
-          <select
-            id="parent_id"
-            value={formData.parent_id || ''}
-            onChange={(e) => setFormData({ ...formData, parent_id: e.target.value || null })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none"
-          >
-            <option value="">Aucune (page racine)</option>
-            {parentPages
-              .filter((p) => p.id !== page?.id)
-              .map((p) => (
+          <div>
+            <label htmlFor="meta_description" className="block text-sm font-medium text-gray-700 mb-1">
+              Meta Description (SEO)
+            </label>
+            <textarea
+              id="meta_description"
+              value={formData.meta_description}
+              onChange={(e) => setFormData({ ...formData, meta_description: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none resize-none"
+              rows={2}
+              placeholder="Description pour les moteurs de recherche"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Contenu de la page
+            </label>
+            <RichTextEditor
+              key={page?.id || 'new'}
+              value={formData.content}
+              onChange={(content) => setFormData({ ...formData, content })}
+            />
+          </div>
+        </div>
+
+        {/* Colonne droite - 1/3 */}
+        <div className="w-full lg:flex-1 space-y-6">
+          <div>
+            <label htmlFor="slug" className="block text-sm font-medium text-gray-700 mb-1">
+              Slug (URL) *
+            </label>
+            <input
+              type="text"
+              id="slug"
+              required
+              value={formData.slug}
+              onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none"
+              placeholder="url-de-la-page"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Image de couverture
+            </label>
+            {formData.image_url ? (
+              <div className="relative">
+                <img
+                  src={formData.image_url}
+                  alt="Cover"
+                  className="w-full h-48 object-cover rounded-lg"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                  <Upload className="w-10 h-10 text-gray-400 mb-3" />
+                  <p className="mb-2 text-sm text-gray-500">
+                    <span className="font-semibold">Cliquez pour uploader</span>
+                  </p>
+                  <p className="text-xs text-gray-500">PNG, JPG, WEBP</p>
+                </div>
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  disabled={uploading}
+                />
+              </label>
+            )}
+            {uploading && (
+              <p className="mt-2 text-sm text-gray-500">Upload en cours...</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="parent_id" className="block text-sm font-medium text-gray-700 mb-1">
+              Page parente
+            </label>
+            <select
+              id="parent_id"
+              value={formData.parent_id || ''}
+              onChange={(e) => setFormData({ ...formData, parent_id: e.target.value || null })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none"
+            >
+              <option value="">Aucune (page racine)</option>
+              {organizeParentPages().map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.title}
+                  {'—'.repeat(p.level)} {p.level > 0 ? ' ' : ''}{p.title}
                 </option>
               ))}
-          </select>
-        </div>
+            </select>
+          </div>
 
-        <div>
-          <label htmlFor="order_index" className="block text-sm font-medium text-gray-700 mb-1">
-            Ordre
-          </label>
-          <input
-            type="number"
-            id="order_index"
-            value={formData.order_index}
-            onChange={(e) => setFormData({ ...formData, order_index: parseInt(e.target.value) || 0 })}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none"
-          />
-        </div>
-
-        <div className="space-y-3">
-          <label className="flex items-center gap-2">
+          <div>
+            <label htmlFor="order_index" className="block text-sm font-medium text-gray-700 mb-1">
+              Ordre
+            </label>
             <input
-              type="checkbox"
-              checked={formData.is_active}
-              onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-              className="w-4 h-4 text-[#328fce] border-gray-300 rounded focus:ring-[#328fce]"
+              type="number"
+              id="order_index"
+              value={formData.order_index}
+              onChange={(e) => setFormData({ ...formData, order_index: parseInt(e.target.value) || 0 })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none"
             />
-            <span className="text-sm font-medium text-gray-700">Page active</span>
-          </label>
+          </div>
 
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={formData.show_in_menu}
-              onChange={(e) => setFormData({ ...formData, show_in_menu: e.target.checked })}
-              className="w-4 h-4 text-[#328fce] border-gray-300 rounded focus:ring-[#328fce]"
-            />
-            <span className="text-sm font-medium text-gray-700">Afficher dans le menu</span>
-          </label>
+          <div className="space-y-3 pt-2">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.is_active}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                className="w-4 h-4 text-[#328fce] border-gray-300 rounded focus:ring-[#328fce]"
+              />
+              <span className="text-sm font-medium text-gray-700">Page active</span>
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.show_in_menu}
+                onChange={(e) => setFormData({ ...formData, show_in_menu: e.target.checked })}
+                className="w-4 h-4 text-[#328fce] border-gray-300 rounded focus:ring-[#328fce]"
+              />
+              <span className="text-sm font-medium text-gray-700">Afficher dans le menu principal</span>
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.show_in_footer}
+                onChange={(e) => setFormData({ ...formData, show_in_footer: e.target.checked })}
+                className="w-4 h-4 text-[#328fce] border-gray-300 rounded focus:ring-[#328fce]"
+              />
+              <span className="text-sm font-medium text-gray-700">Afficher dans le menu du footer</span>
+            </label>
+
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.show_toc}
+                onChange={(e) => setFormData({ ...formData, show_toc: e.target.checked })}
+                className="w-4 h-4 text-[#328fce] border-gray-300 rounded focus:ring-[#328fce]"
+              />
+              <span className="text-sm font-medium text-gray-700">Afficher le sommaire</span>
+            </label>
+          </div>
         </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">
-          Contenu de la page
-        </label>
-        <RichTextEditor
-          value={formData.content}
-          onChange={(content) => setFormData({ ...formData, content })}
-        />
       </div>
     </form>
   );

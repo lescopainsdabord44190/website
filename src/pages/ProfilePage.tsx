@@ -1,16 +1,164 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Lock, Check, AlertCircle } from 'lucide-react';
+import { Lock, Check, AlertCircle, Camera, Upload, Trash2 } from 'lucide-react';
+import { PasswordInput } from '../components/PasswordInput';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 export function ProfilePage() {
-  const { user } = useAuth();
+  const { user, signOut, refreshAvatar } = useAuth();
+  const navigate = useNavigate();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarSuccess, setAvatarSuccess] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      loadAvatar();
+    }
+  }, [user]);
+
+  const loadAvatar = async () => {
+    if (!user) return;
+
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (data?.avatar_url) {
+        setAvatarUrl(data.avatar_url);
+      }
+    } catch (err) {
+      console.error('Error loading avatar:', err);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    // Vérifier le type de fichier
+    if (!file.type.startsWith('image/')) {
+      setError('Veuillez sélectionner une image');
+      return;
+    }
+
+    // Vérifier la taille du fichier (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setError('L\'image ne doit pas dépasser 2 MB');
+      return;
+    }
+
+    setAvatarUploading(true);
+    setError('');
+    setAvatarSuccess(false);
+
+    try {
+      // Supprimer l'ancien avatar s'il existe
+      if (avatarUrl) {
+        const oldPath = avatarUrl.split('/avatars/')[1];
+        if (oldPath) {
+          await supabase.storage
+            .from('avatars')
+            .remove([oldPath]);
+        }
+      }
+
+      // Upload le nouvel avatar
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Obtenir l'URL publique
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      // Mettre à jour la base de données (profiles)
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          avatar_url: publicUrl
+        }, {
+          onConflict: 'id'
+        });
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(publicUrl);
+      setAvatarSuccess(true);
+      
+      // Rafraîchir l'avatar dans le contexte pour mettre à jour le menu
+      refreshAvatar();
+      
+      setTimeout(() => setAvatarSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error uploading avatar:', err);
+      setError('Erreur lors de l\'upload de l\'avatar');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleAvatarDelete = async () => {
+    if (!user || !avatarUrl) return;
+
+    setAvatarUploading(true);
+    setError('');
+    setAvatarSuccess(false);
+
+    try {
+      // Supprimer l'avatar du storage
+      const avatarPath = avatarUrl.split('/avatars/')[1];
+      if (avatarPath) {
+        await supabase.storage.from('avatars').remove([avatarPath]);
+      }
+
+      // Mettre à jour la base de données pour supprimer l'URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          avatar_url: null
+        }, {
+          onConflict: 'id'
+        });
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(null);
+      setAvatarSuccess(true);
+      
+      // Rafraîchir l'avatar dans le contexte pour mettre à jour le menu
+      refreshAvatar();
+      
+      setTimeout(() => setAvatarSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error deleting avatar:', err);
+      setError('Erreur lors de la suppression de l\'avatar');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +208,43 @@ export function ProfilePage() {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+
+    setIsDeleting(true);
+    setError('');
+
+    try {
+      // Supprimer l'avatar si présent
+      if (avatarUrl) {
+        const avatarPath = avatarUrl.split('/avatars/')[1];
+        if (avatarPath) {
+          await supabase.storage.from('avatars').remove([avatarPath]);
+        }
+      }
+
+      // Appeler la fonction RPC pour supprimer le compte
+      const { error: deleteError } = await supabase.rpc('delete_own_account');
+
+      if (deleteError) {
+        console.error('Delete error:', deleteError);
+        setError('Impossible de supprimer le compte. Veuillez réessayer.');
+        setIsDeleting(false);
+        setShowDeleteDialog(false);
+        return;
+      }
+
+      // Déconnecter l'utilisateur et rediriger vers la page d'accueil
+      await signOut();
+      navigate('/', { replace: true });
+    } catch (err) {
+      console.error('Error deleting account:', err);
+      setError('Une erreur est survenue lors de la suppression du compte');
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FEF5F0] to-white py-12 px-4">
       <div className="container mx-auto max-w-2xl">
@@ -71,6 +256,69 @@ export function ProfilePage() {
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
           <div className="mb-6 pb-6 border-b border-gray-100">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Informations du compte</h2>
+            
+            {/* Avatar Section */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Photo de profil</label>
+              <div className="flex items-center gap-6">
+                <div className="relative group">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="Avatar"
+                      className="w-24 h-24 rounded-full object-cover border-4 border-gray-100 shadow-md"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#328fce] to-[#84c19e] flex items-center justify-center text-white font-bold text-3xl border-4 border-gray-100 shadow-md">
+                      {user?.email?.[0].toUpperCase() || '?'}
+                    </div>
+                  )}
+                  <label
+                    htmlFor="avatar-upload"
+                    className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  >
+                    <Camera className="w-8 h-8 text-white" />
+                  </label>
+                  {avatarUrl && (
+                    <button
+                      onClick={handleAvatarDelete}
+                      disabled={avatarUploading}
+                      className="absolute -top-1 -right-1 w-8 h-8 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center shadow-lg transition-all hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed group/delete"
+                      title="Supprimer la photo"
+                    >
+                      <Trash2 className="w-4 h-4 text-white" />
+                    </button>
+                  )}
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                    disabled={avatarUploading}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label
+                    htmlFor="avatar-upload"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#328fce] to-[#84c19e] text-white rounded-lg hover:shadow-lg transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {avatarUploading ? 'Upload en cours...' : 'Changer la photo'}
+                  </label>
+                  <p className="text-xs text-gray-500 mt-2">
+                    JPG, PNG ou GIF. Max 2MB.
+                  </p>
+                  {avatarSuccess && (
+                    <div className="mt-2 flex items-center gap-1 text-green-600 text-sm">
+                      <Check className="w-4 h-4" />
+                      <span>Photo mise à jour !</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-3">
               <div>
                 <label className="text-sm font-medium text-gray-500">Email</label>
@@ -104,14 +352,12 @@ export function ProfilePage() {
                 <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700 mb-1">
                   Mot de passe actuel
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   id="currentPassword"
-                  required
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none transition-all"
                   placeholder="••••••••"
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent"
                 />
               </div>
 
@@ -119,15 +365,13 @@ export function ProfilePage() {
                 <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
                   Nouveau mot de passe
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   id="newPassword"
-                  required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none transition-all"
                   placeholder="••••••••"
                   minLength={6}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent"
                 />
                 <p className="mt-1 text-xs text-gray-500">Minimum 6 caractères</p>
               </div>
@@ -136,14 +380,12 @@ export function ProfilePage() {
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
                   Confirmer le nouveau mot de passe
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   id="confirmPassword"
-                  required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none transition-all"
                   placeholder="••••••••"
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent"
                 />
               </div>
 
@@ -158,7 +400,53 @@ export function ProfilePage() {
             </form>
           </div>
         </div>
+
+        {/* Zone dangereuse - Suppression du compte */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 border-2 border-red-100">
+          <div className="mb-4">
+            <h2 className="text-xl font-bold text-red-600 mb-2 flex items-center gap-2">
+              <Trash2 className="w-5 h-5" />
+              Zone dangereuse
+            </h2>
+            <p className="text-sm text-gray-600">
+              La suppression de votre compte est définitive et irréversible.
+            </p>
+          </div>
+
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <h3 className="font-semibold text-red-800 mb-2">
+              Que se passe-t-il lorsque vous supprimez votre compte ?
+            </h3>
+            <ul className="text-sm text-red-700 space-y-1 list-disc list-inside">
+              <li>Toutes vos données personnelles seront supprimées</li>
+              <li>Votre photo de profil sera effacée</li>
+              <li>Vous perdrez l'accès à votre compte de manière permanente</li>
+              <li>Cette action ne peut pas être annulée</li>
+            </ul>
+          </div>
+
+          <button
+            onClick={() => setShowDeleteDialog(true)}
+            className="w-full bg-red-600 text-white px-6 py-3 rounded-full hover:bg-red-700 transition-all hover:scale-105 font-medium shadow-lg flex items-center justify-center gap-2"
+          >
+            <Trash2 className="w-5 h-5" />
+            Supprimer mon compte
+          </button>
+        </div>
       </div>
+
+      {/* Dialog de confirmation */}
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={handleDeleteAccount}
+        title="Supprimer votre compte ?"
+        message="Cette action est irréversible. Toutes vos données seront définitivement supprimées et vous ne pourrez plus accéder à votre compte."
+        confirmText="Oui, supprimer mon compte"
+        cancelText="Annuler"
+        isDangerous={true}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

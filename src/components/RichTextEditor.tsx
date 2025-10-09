@@ -1,254 +1,205 @@
-import { useState, useRef } from 'react';
-import { Heading2, Image as ImageIcon } from 'lucide-react';
+import { useEffect, useRef, useCallback, useState } from 'react';
+import EditorJS, { OutputData } from '@editorjs/editorjs';
+import Header from '@editorjs/header';
+import List from '@editorjs/list';
+import ImageTool from '@editorjs/image';
+import Quote from '@editorjs/quote';
+import Delimiter from '@editorjs/delimiter';
+import Table from '@editorjs/table';
+import Warning from '@editorjs/warning';
+import Checklist from '@editorjs/checklist';
+import Paragraph from '@editorjs/paragraph';
 import { supabase } from '../lib/supabase';
+import { Alert } from '../lib/editorjs-alert';
 
 interface RichTextEditorProps {
-  value: any[];
-  onChange: (value: any[]) => void;
+  value: OutputData | null;
+  onChange: (value: OutputData) => void;
 }
 
+let editorIdCounter = 0;
+const editorInstances = new Map<string, boolean>();
+
 export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
-  const [selectedBlock, setSelectedBlock] = useState<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
+  const editorRef = useRef<EditorJS | null>(null);
+  const [editorId] = useState(() => `editorjs-${++editorIdCounter}`);
+  const onChangeRef = useRef(onChange);
+  const valueRef = useRef(value);
+  const isInitialized = useRef(false);
 
-  const addBlock = (type: 'paragraph' | 'heading' | 'image') => {
-    const newBlock = {
-      type,
-      content: type === 'image' ? '' : '',
-      ...(type === 'heading' && { level: 2 }),
-      ...(type === 'image' && { url: '', alt: '', caption: '' }),
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  const handleChange = useCallback(async () => {
+    if (editorRef.current) {
+      try {
+        const outputData = await editorRef.current.save();
+        onChangeRef.current(outputData);
+      } catch (e) {
+        console.error('Error saving editor data:', e);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isInitialized.current || editorInstances.has(editorId)) return;
+    
+    editorInstances.set(editorId, true);
+    let isMounted = true;
+    
+    const initEditor = async () => {
+      // Attendre que le DOM soit prêt
+      await new Promise(resolve => setTimeout(resolve, 0));
+      
+      if (!isMounted) return;
+      
+      const holderElement = document.getElementById(editorId);
+      if (!holderElement) {
+        editorInstances.delete(editorId);
+        return;
+      }
+      
+      // Vérifier si l'éditeur n'est pas déjà initialisé dans ce holder
+      if (holderElement.children.length > 0) {
+        isInitialized.current = true;
+        return;
+      }
+
+      const editor = new EditorJS({
+        holder: editorId,
+        data: valueRef.current || undefined,
+        placeholder: 'Commencez à écrire votre contenu...',
+        tools: {
+          paragraph: {
+            class: Paragraph,
+            inlineToolbar: true,
+          },
+          header: {
+            class: Header,
+            inlineToolbar: true,
+            config: {
+              placeholder: 'Entrez un titre',
+              levels: [2, 3, 4, 5, 6],
+              defaultLevel: 2,
+            },
+          },
+          list: {
+            class: List,
+            inlineToolbar: true,
+            config: {
+              defaultStyle: 'unordered',
+            },
+          },
+          image: {
+            class: ImageTool,
+            config: {
+              uploader: {
+                async uploadByFile(file: File) {
+                  try {
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                    const filePath = `content/${fileName}`;
+
+                    const { error: uploadError } = await supabase.storage
+                      .from('page_assets')
+                      .upload(filePath, file);
+
+                    if (uploadError) throw uploadError;
+
+                    const { data: { publicUrl } } = supabase.storage
+                      .from('page_assets')
+                      .getPublicUrl(filePath);
+
+                    return {
+                      success: 1,
+                      file: {
+                        url: publicUrl,
+                      },
+                    };
+                  } catch (error) {
+                    console.error('Error uploading image:', error);
+                    return {
+                      success: 0,
+                    };
+                  }
+                },
+              },
+            },
+          },
+          quote: {
+            class: Quote,
+            inlineToolbar: true,
+            config: {
+              quotePlaceholder: 'Entrez une citation',
+              captionPlaceholder: 'Auteur de la citation',
+            },
+          },
+          delimiter: Delimiter,
+          table: {
+            class: Table,
+            inlineToolbar: true,
+          },
+          warning: {
+            class: Warning,
+            inlineToolbar: true,
+            config: {
+              titlePlaceholder: 'Titre',
+              messagePlaceholder: 'Message',
+            },
+          },
+          alert: {
+            class: Alert,
+            inlineToolbar: true,
+          },
+          checklist: {
+            class: Checklist,
+            inlineToolbar: true,
+          },
+        },
+        onChange: handleChange,
+      });
+
+      try {
+        await editor.isReady;
+        editorRef.current = editor;
+        isInitialized.current = true;
+      } catch (e) {
+        console.error('Error initializing editor:', e);
+      }
     };
-    onChange([...value, newBlock]);
-    setSelectedBlock(value.length);
-  };
 
-  const updateBlock = (index: number, updates: any) => {
-    const newValue = [...value];
-    newValue[index] = { ...newValue[index], ...updates };
-    onChange(newValue);
-  };
+    initEditor();
 
-  const deleteBlock = (index: number) => {
-    const newValue = value.filter((_, i) => i !== index);
-    onChange(newValue);
-    setSelectedBlock(null);
-  };
-
-  const moveBlock = (index: number, direction: 'up' | 'down') => {
-    const newValue = [...value];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= newValue.length) return;
-    [newValue[index], newValue[targetIndex]] = [newValue[targetIndex], newValue[index]];
-    onChange(newValue);
-    setSelectedBlock(targetIndex);
-  };
-
-  const handleImageUpload = async (file: File, blockIndex?: number) => {
-    setUploading(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('page-images')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('page-images')
-        .getPublicUrl(filePath);
-
-      if (blockIndex !== undefined) {
-        updateBlock(blockIndex, { url: publicUrl });
-      } else {
-        addBlock('image');
-        updateBlock(value.length, { url: publicUrl });
+    return () => {
+      isMounted = false;
+      isInitialized.current = false;
+      editorInstances.delete(editorId);
+      
+      if (editorRef.current) {
+        const currentEditor = editorRef.current;
+        currentEditor.isReady
+          .then(() => {
+            if (currentEditor.destroy) {
+              currentEditor.destroy();
+            }
+            editorRef.current = null;
+          })
+          .catch((e) => {
+            console.error('Error in cleanup:', e);
+            editorRef.current = null;
+          });
       }
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      alert('Erreur lors de l\'upload de l\'image');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handlePaste = async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
-        e.preventDefault();
-        const file = items[i].getAsFile();
-        if (file) {
-          await handleImageUpload(file);
-        }
-      }
-    }
-  };
+    };
+  }, [editorId, handleChange]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-lg">
-        <button
-          type="button"
-          onClick={() => addBlock('paragraph')}
-          className="px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors text-sm font-medium"
-        >
-          Paragraphe
-        </button>
-        <button
-          type="button"
-          onClick={() => addBlock('heading')}
-          className="px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2"
-        >
-          <Heading2 className="w-4 h-4" />
-          Titre
-        </button>
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="px-3 py-2 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2"
-          disabled={uploading}
-        >
-          <ImageIcon className="w-4 h-4" />
-          {uploading ? 'Upload...' : 'Image'}
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleImageUpload(file);
-          }}
-        />
-      </div>
-
-      <div className="space-y-4" onPaste={handlePaste}>
-        {value.map((block, index) => (
-          <div
-            key={index}
-            className={`border rounded-lg p-4 transition-all ${
-              selectedBlock === index ? 'border-[#328fce] bg-blue-50' : 'border-gray-200 bg-white'
-            }`}
-            onClick={() => setSelectedBlock(index)}
-          >
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-600 capitalize">{block.type}</span>
-              <div className="flex gap-2">
-                {index > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => moveBlock(index, 'up')}
-                    className="text-gray-400 hover:text-gray-600 text-sm"
-                  >
-                    ↑
-                  </button>
-                )}
-                {index < value.length - 1 && (
-                  <button
-                    type="button"
-                    onClick={() => moveBlock(index, 'down')}
-                    className="text-gray-400 hover:text-gray-600 text-sm"
-                  >
-                    ↓
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => deleteBlock(index)}
-                  className="text-red-400 hover:text-red-600 text-sm"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {block.type === 'paragraph' && (
-              <textarea
-                value={block.content || ''}
-                onChange={(e) => updateBlock(index, { content: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none resize-none"
-                rows={4}
-                placeholder="Saisissez votre texte..."
-              />
-            )}
-
-            {block.type === 'heading' && (
-              <div className="space-y-2">
-                <select
-                  value={block.level || 2}
-                  onChange={(e) => updateBlock(index, { level: parseInt(e.target.value) })}
-                  className="px-3 py-1 border border-gray-300 rounded text-sm"
-                >
-                  <option value={2}>H2</option>
-                  <option value={3}>H3</option>
-                  <option value={4}>H4</option>
-                </select>
-                <input
-                  type="text"
-                  value={block.content || ''}
-                  onChange={(e) => updateBlock(index, { content: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none font-bold"
-                  placeholder="Titre..."
-                />
-              </div>
-            )}
-
-            {block.type === 'image' && (
-              <div className="space-y-2">
-                {block.url ? (
-                  <img src={block.url} alt={block.alt || ''} className="max-w-full h-auto rounded" />
-                ) : (
-                  <div className="border-2 border-dashed border-gray-300 rounded p-8 text-center">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'image/*';
-                        input.onchange = (e: any) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleImageUpload(file, index);
-                        };
-                        input.click();
-                      }}
-                      className="text-[#328fce] hover:text-[#84c19e]"
-                    >
-                      Cliquez pour choisir une image
-                    </button>
-                  </div>
-                )}
-                <input
-                  type="text"
-                  value={block.alt || ''}
-                  onChange={(e) => updateBlock(index, { alt: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none text-sm"
-                  placeholder="Texte alternatif..."
-                />
-                <input
-                  type="text"
-                  value={block.caption || ''}
-                  onChange={(e) => updateBlock(index, { caption: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#328fce] focus:border-transparent outline-none text-sm"
-                  placeholder="Légende (optionnelle)..."
-                />
-              </div>
-            )}
-          </div>
-        ))}
-
-        {value.length === 0 && (
-          <div className="text-center py-12 text-gray-400">
-            Ajoutez un bloc pour commencer à créer votre contenu
-          </div>
-        )}
-      </div>
+    <div className="border border-gray-300 rounded-lg p-4 bg-white min-h-[400px]">
+      <div id={editorId} />
     </div>
   );
 }

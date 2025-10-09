@@ -7,6 +7,9 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
+  avatarUrl: string | null;
+  updateAvatar: (url: string | null) => void;
+  refreshAvatar: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -19,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -27,8 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (session?.user) {
         checkAdminRole(session.user.id);
+        loadAvatar(session.user.id);
       } else {
         setLoading(false);
+        setAvatarUrl(null);
       }
     });
 
@@ -39,8 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           await checkAdminRole(session.user.id);
+          await loadAvatar(session.user.id);
         } else {
           setIsAdmin(false);
+          setAvatarUrl(null);
           setLoading(false);
         }
       })();
@@ -70,6 +78,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadAvatar = async (userId: string) => {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', userId)
+        .maybeSingle();
+
+      setAvatarUrl(data?.avatar_url || null);
+    } catch (err) {
+      console.error('Error loading avatar:', err);
+      setAvatarUrl(null);
+    }
+  };
+
+  const refreshAvatar = async () => {
+    if (user) {
+      await loadAvatar(user.id);
+    }
+  };
+
+  const updateAvatar = (url: string | null) => {
+    setAvatarUrl(url);
   };
 
   const signIn = async (email: string, password: string) => {
@@ -107,6 +140,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         loading,
         isAdmin,
+        avatarUrl,
+        updateAvatar,
+        refreshAvatar,
         signIn,
         signUp,
         signOut,

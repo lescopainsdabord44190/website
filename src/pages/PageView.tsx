@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
-import { useLocation } from 'react-router';
-import { usePageBySlug, usePages } from '../hooks/usePages';
-import { SafeHtml } from '../components/SafeHtml';
+import { useLocation, Link as RouterLink, useNavigate } from 'react-router';
+import { usePageBySlug, usePages, buildFullPath } from '../hooks/usePages';
 import { Link } from '../components/Link';
-import { Home, ChevronRight } from 'lucide-react';
+import { Home, ChevronRight, Edit } from 'lucide-react';
+import { migrateOldContentToEditorJS } from '../lib/contentMigration';
+import { useAuth } from '../contexts/AuthContext';
+import { EditorJSRenderer } from '../components/EditorJSRenderer';
 
 interface TocItem {
   id: string;
@@ -11,11 +13,21 @@ interface TocItem {
   level: number;
 }
 
+interface EditorBlock {
+  type: string;
+  data: {
+    text?: string;
+    level?: number;
+  };
+}
+
 export function PageView() {
   const location = useLocation();
+  const navigate = useNavigate();
   const slug = location.pathname;
   const { page, loading } = usePageBySlug(slug);
   const { pages } = usePages();
+  const { isAdmin } = useAuth();
   const [toc, setToc] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
   const contentRef = useRef<HTMLDivElement>(null);
@@ -23,14 +35,25 @@ export function PageView() {
   useEffect(() => {
     if (!page || !page.content) return;
 
+    const content = migrateOldContentToEditorJS(page.content);
+    if (!content || !content.blocks) return;
+
+    const decodeHtml = (html: string): string => {
+      const txt = document.createElement('textarea');
+      txt.innerHTML = html;
+      return txt.value;
+    };
+
     const headings: TocItem[] = [];
-    page.content.forEach((block: any, index: number) => {
-      if (block.type === 'heading' && block.level && block.level <= 3) {
+    content.blocks.forEach((block, index: number) => {
+      const editorBlock = block as EditorBlock;
+      if (editorBlock.type === 'header' && editorBlock.data.level && editorBlock.data.level <= 3 && editorBlock.data.text) {
         const id = `heading-${index}`;
+        const cleanText = editorBlock.data.text.replace(/<[^>]*>/g, '');
         headings.push({
           id,
-          text: block.content.replace(/<[^>]*>/g, ''),
-          level: block.level,
+          text: decodeHtml(cleanText),
+          level: editorBlock.data.level,
         });
       }
     });
@@ -88,7 +111,41 @@ export function PageView() {
     );
   }
 
+  const buildBreadcrumb = () => {
+    const breadcrumb: Array<{ title: string; path: string; id: string }> = [];
+    let currentPage: typeof page | undefined = page;
+    
+    while (currentPage) {
+      breadcrumb.unshift({
+        title: currentPage.title,
+        path: buildFullPath(currentPage.id, pages),
+        id: currentPage.id,
+      });
+      
+      if (currentPage.parent_id) {
+        currentPage = pages.find((p) => p.id === currentPage!.parent_id);
+      } else {
+        currentPage = undefined;
+      }
+    }
+    
+    return breadcrumb;
+  };
+
+  const breadcrumbItems = buildBreadcrumb();
   const childPages = pages.filter((p) => p.parent_id === page.id && p.is_active);
+
+  const allBreadcrumbOptions = [
+    { title: 'Accueil', path: '/', id: 'home' },
+    ...breadcrumbItems,
+  ];
+
+  const handleBreadcrumbChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const path = e.target.value;
+    if (path) {
+      navigate(path);
+    }
+  };
 
   return (
     <div className="bg-gradient-to-br from-[#FEF5F0] to-white pb-12">
@@ -110,21 +167,71 @@ export function PageView() {
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
-          <nav className="flex items-center gap-2 text-sm text-gray-600 mb-8">
-            <Link href="/" className="hover:text-[#328fce] transition-colors flex items-center gap-1">
-              <Home className="w-4 h-4" />
-              <span>Accueil</span>
-            </Link>
-            <ChevronRight className="w-4 h-4" />
-            <span className="text-gray-800 font-medium">{page.title}</span>
-          </nav>
+          <div className="flex items-center justify-between mb-8 gap-4">
+            <div className="flex-1 min-w-0">
+              {/* Mobile breadcrumb (select) */}
+              <div className="md:hidden">
+                <select
+                  value={page.id === 'home' ? '/' : buildFullPath(page.id, pages)}
+                  onChange={handleBreadcrumbChange}
+                  className="w-full px-4 py-2.5 text-sm bg-white border-2 border-gray-200 rounded-lg text-gray-700 font-medium focus:outline-none focus:border-[#328fce] focus:ring-2 focus:ring-[#328fce]/20 transition-all appearance-none cursor-pointer shadow-sm"
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+                    backgroundPosition: 'right 0.5rem center',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundSize: '1.5em 1.5em',
+                    paddingRight: '2.5rem',
+                  }}
+                >
+                  {allBreadcrumbOptions.map((item, index) => (
+                    <option key={item.id} value={item.path}>
+                      {'  '.repeat(index) + item.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Desktop breadcrumb */}
+              <nav className="hidden md:flex items-center gap-2 text-sm text-gray-600 flex-wrap">
+                <Link href="/" className="hover:text-[#328fce] transition-colors flex items-center gap-1">
+                  <Home className="w-4 h-4" />
+                  <span>Accueil</span>
+                </Link>
+                {breadcrumbItems.map((item, index) => {
+                  const isLast = index === breadcrumbItems.length - 1;
+                  return (
+                    <div key={item.id} className="flex items-center gap-2">
+                      <ChevronRight className="w-4 h-4" />
+                      {isLast ? (
+                        <span className="text-gray-800 font-medium">{item.title}</span>
+                      ) : (
+                        <Link href={item.path} className="hover:text-[#328fce] transition-colors">
+                          {item.title}
+                        </Link>
+                      )}
+                    </div>
+                  );
+                })}
+              </nav>
+            </div>
+            
+            {isAdmin && (
+              <RouterLink
+                to={`/admin/pages/${page.id}/edit`}
+                className="flex items-center gap-2 px-4 py-2 bg-[#328fce] text-white rounded-lg hover:bg-[#84c19e] transition-colors text-sm shadow-md flex-shrink-0"
+              >
+                <Edit className="w-4 h-4" />
+                <span className="hidden sm:inline">Modifier</span>
+              </RouterLink>
+            )}
+          </div>
 
           {!page.image_url && (
             <h1 className="text-4xl md:text-5xl font-bold mb-8 text-gray-800">{page.title}</h1>
           )}
 
           <div className="flex gap-8">
-            {toc.length > 0 && (
+            {page.show_toc !== false && toc.length > 0 && (
               <aside className="hidden lg:block w-64 flex-shrink-0">
                 <div className="sticky top-24">
                   <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -156,52 +263,13 @@ export function PageView() {
                 className="bg-white rounded-2xl shadow-lg p-6 md:p-10 mb-8"
               >
                 <div className="prose prose-lg max-w-none">
-                  {Array.isArray(page.content) && page.content.length > 0 ? (
-                    page.content.map((block: any, index: number) => {
-                      if (block.type === 'paragraph') {
-                        return (
-                          <SafeHtml
-                            key={index}
-                            as="p"
-                            className="mb-4 text-gray-700 leading-relaxed"
-                            html={block.content}
-                          />
-                        );
-                      }
-                      if (block.type === 'heading') {
-                        const HeadingTag = `h${block.level || 2}` as keyof JSX.IntrinsicElements;
-                        const isInToc = block.level && block.level <= 3;
-                        return (
-                          <SafeHtml
-                            key={index}
-                            as={HeadingTag}
-                            id={isInToc ? `heading-${index}` : undefined}
-                            className="font-bold text-gray-800 mt-8 mb-4 scroll-mt-24"
-                            html={block.content}
-                          />
-                        );
-                      }
-                      if (block.type === 'image') {
-                        return (
-                          <div key={index} className="my-6">
-                            <img
-                              src={block.url}
-                              alt={block.alt || ''}
-                              className="rounded-lg shadow-md w-full h-auto"
-                            />
-                            {block.caption && (
-                              <p className="text-sm text-gray-500 text-center mt-2">
-                                {block.caption}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      }
-                      return null;
-                    })
-                  ) : (
-                    <p className="text-gray-700 leading-relaxed">Contenu à venir...</p>
-                  )}
+                  {(() => {
+                    const content = migrateOldContentToEditorJS(page.content);
+                    if (!content || !content.blocks || content.blocks.length === 0) {
+                      return <p className="text-gray-700 leading-relaxed">Contenu à venir...</p>;
+                    }
+                    return <EditorJSRenderer content={content} enableToc={true} />;
+                  })()}
                 </div>
               </article>
 
@@ -212,7 +280,7 @@ export function PageView() {
                     {childPages.map((childPage) => (
                       <Link
                         key={childPage.id}
-                        href={`/${childPage.slug}`}
+                        href={buildFullPath(childPage.id, pages)}
                         className="group p-4 border-2 border-gray-100 rounded-xl hover:border-[#328fce] hover:bg-[#328fce]/5 transition-all"
                       >
                         <h3 className="font-semibold text-gray-800 group-hover:text-[#328fce] transition-colors mb-2">

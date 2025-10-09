@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Link } from './Link';
 
 export function UserMenu() {
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, isAdmin, signOut, avatarUrl } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -35,9 +35,17 @@ export function UserMenu() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 hover:opacity-80 transition-opacity"
       >
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#328fce] to-[#84c19e] flex items-center justify-center text-white font-semibold shadow-md">
-          {getInitials(user.email || '')}
-        </div>
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt="Avatar"
+            className="w-10 h-10 rounded-full object-cover shadow-md"
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#328fce] to-[#84c19e] flex items-center justify-center text-white font-semibold shadow-md">
+            {getInitials(user.email || '')}
+          </div>
+        )}
         <ChevronDown
           className={`w-4 h-4 text-gray-600 transition-transform ${isOpen ? 'rotate-180' : ''}`}
         />

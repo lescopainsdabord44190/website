@@ -8,6 +8,132 @@
   }
 }
 
+.codex-editor {
+  @apply text-base;
+}
+
+.codex-editor__redactor {
+  @apply pb-0;
+}
+
+.ce-block__content,
+.ce-toolbar__content {
+  @apply max-w-none;
+}
+
+.ce-toolbar__plus {
+  @apply text-gray-600 hover:text-[#328fce];
+}
+
+.ce-toolbar__settings-btn {
+  @apply text-gray-600 hover:text-[#328fce];
+}
+
+.ce-inline-toolbar {
+  @apply bg-white border border-gray-300 rounded-lg shadow-lg;
+}
+
+.ce-inline-tool {
+  @apply text-gray-700 hover:bg-gray-100;
+}
+
+.ce-conversion-toolbar {
+  @apply bg-white border border-gray-300 rounded-lg shadow-lg;
+}
+
+.ce-settings {
+  @apply bg-white border border-gray-300 rounded-lg shadow-lg;
+}
+
+.cdx-block {
+  @apply py-2;
+}
+
+.ce-paragraph {
+  @apply text-gray-700 leading-relaxed;
+}
+
+.ce-header {
+  @apply font-bold text-gray-800;
+}
+
+.cdx-list {
+  @apply text-gray-700;
+}
+
+.cdx-checklist__item-checkbox {
+  @apply border-2 border-gray-300 rounded;
+}
+
+.cdx-checklist__item--checked .cdx-checklist__item-checkbox {
+  @apply bg-green-500 border-green-500;
+}
+
+.cdx-quote {
+  @apply border-l-4 border-[#328fce] bg-gray-50 pl-4 py-2 rounded-r-lg;
+}
+
+.cdx-warning {
+  @apply border-l-4 border-yellow-500 bg-yellow-50 p-4 rounded-r-lg;
+}
+
+.cdx-alert {
+  @apply p-4 rounded-r-lg;
+}
+
+.cdx-alert-type-selector {
+  @apply flex gap-2 mb-3;
+}
+
+.cdx-alert-type-button {
+  @apply px-3 py-1 rounded text-sm font-medium border-2 transition-all cursor-pointer;
+}
+
+.cdx-alert-type-button:hover {
+  @apply opacity-80;
+}
+
+.cdx-alert .cdx-input {
+  @apply outline-none;
+}
+
+.cdx-alert .cdx-input:empty:before {
+  content: attr(data-placeholder);
+  @apply text-gray-400;
+}
+
+.cdx-alert .cdx-input:first-of-type {
+  @apply font-semibold text-lg mb-2;
+}
+
+.cdx-alert .cdx-input:last-of-type {
+  @apply text-base leading-relaxed;
+}
+
+.tc-wrap {
+  @apply overflow-x-auto;
+}
+
+.tc-table {
+  @apply border border-gray-300 rounded-lg;
+}
+
+.tc-row:first-child {
+  @apply bg-gray-100;
+}
+
+.tc-cell {
+  @apply border border-gray-300 px-4 py-2;
+}
+
+.image-tool__image {
+  @apply rounded-lg shadow-md;
+}
+
+.image-tool__caption {
+  @apply text-sm text-gray-500 text-center mt-2;
+}
+
 @layer utilities {
   .text-brand-green {
     color: #84c19e;

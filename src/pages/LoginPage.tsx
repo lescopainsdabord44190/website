@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
-import { LogIn } from 'lucide-react';
+import { LogIn, LogOut } from 'lucide-react';
 import { Link } from '../components/Link';
+import { PasswordInput } from '../components/PasswordInput';
 import { supabase } from '../lib/supabase';
 
 export function LoginPage() {
-  const { signIn } = useAuth();
+  const { signIn, signOut, user: loggedInUser, avatarUrl } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +44,18 @@ export function LoginPage() {
     }
   };
 
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await signOut();
+      // L'utilisateur reste sur cette page
+    } catch (err) {
+      setError('Erreur lors de la déconnexion');
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex">
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-[#328fce] via-[#84c19e] to-[#ff9fa8] relative overflow-hidden">
@@ -49,7 +63,9 @@ export function LoginPage() {
         
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white">
           <div className="max-w-md">
-            <img src="/logo-white.png" alt="Logo" className="h-20 w-auto mb-8" />
+            <Link href="/">
+              <img src="/logo-white.png" alt="Logo" className="h-20 w-auto mb-8" />
+            </Link>
             <h2 className="text-5xl font-bold mb-6 leading-tight">
               Bienvenue !
             </h2>
@@ -99,6 +115,40 @@ export function LoginPage() {
               <p className="text-gray-600">Accédez à votre espace</p>
             </div>
 
+            {loggedInUser && (
+              <div className="mb-6 p-5 bg-gradient-to-br from-[#328fce]/10 to-[#84c19e]/10 border-2 border-[#328fce]/20 rounded-2xl">
+                <p className="text-sm font-medium text-gray-600 mb-3">
+                  Vous êtes connecté en tant que :
+                </p>
+                <div className="flex items-center gap-3">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="Avatar"
+                      className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#328fce] to-[#84c19e] flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                      {loggedInUser.email?.[0].toUpperCase() || '?'}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-800 truncate">
+                      {loggedInUser.email}
+                    </p>
+                    <button
+                      onClick={handleLogout}
+                      disabled={loggingOut}
+                      className="flex gap-1 items-center text-sm text-blue-600 hover:text-[#328fce] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      {loggingOut ? 'Déconnexion...' : 'Déconnexion'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-800 flex items-center gap-2">
                 <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -128,13 +178,10 @@ export function LoginPage() {
                 <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
                   Mot de passe
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   id="password"
-                  required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#328fce] focus:border-[#328fce] outline-none transition-all text-gray-800"
                   placeholder="••••••••"
                 />
               </div>
