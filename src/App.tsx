@@ -10,6 +10,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { SpeedInsights } from "@vercel/speed-insights/react"
 
 function AuthenticatedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -66,6 +67,7 @@ function Layout() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <SpeedInsights />
       {showHeaderFooter && <Header />}
       <main className="flex-1">
         <Routes>
