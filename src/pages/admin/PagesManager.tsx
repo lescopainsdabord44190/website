@@ -197,41 +197,39 @@ export function PagesManager() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <button
-                    onClick={() => togglePageStatus(page.id, page.is_active)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      page.is_active ? 'bg-[#328fce]' : 'bg-gray-300'
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => togglePageStatus(page.id, page.is_active)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    page.is_active ? 'bg-[#328fce]' : 'bg-gray-300'
+                  }`}
+                  title={page.is_active ? 'Désactiver' : 'Activer'}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      page.is_active ? 'translate-x-6' : 'translate-x-1'
                     }`}
-                    title={page.is_active ? 'Désactiver' : 'Activer'}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        page.is_active ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </label>
+                  />
+                </button>
                 <a
                   href={buildFullPath(page.id, pages)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 text-gray-600 hover:text-[#328fce] transition-colors"
+                  className="p-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
                   title="Voir la page"
                 >
                   <Eye className="w-5 h-5" />
                 </a>
                 <button
                   onClick={() => navigate(`/admin/pages/${page.id}/edit`)}
-                  className="p-2 text-gray-600 hover:text-[#328fce] transition-colors"
+                  className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
                   title="Modifier"
                 >
                   <Edit className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => openDeleteDialog(page)}
-                  className="p-2 text-gray-600 hover:text-red-600 transition-colors"
+                  className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
                   title="Supprimer"
                 >
                   <Trash2 className="w-5 h-5" />

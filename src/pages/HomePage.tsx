@@ -5,6 +5,7 @@ import { SafeHtml } from '../components/SafeHtml';
 import { EditorJSRenderer } from '../components/EditorJSRenderer';
 import { OutputData } from '@editorjs/editorjs';
 import { useTracking, TrackingEvent, TrackingProperty } from '../hooks/useTracking';
+import { FeaturedHighlights } from '../components/FeaturedHighlights';
 
 export function HomePage() {
   const { settings } = useSiteSettings();
@@ -83,6 +84,8 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      <FeaturedHighlights />
 
       {/* <section className="py-16 bg-white">
         <div className="container mx-auto px-4">

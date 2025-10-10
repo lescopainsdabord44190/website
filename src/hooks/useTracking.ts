@@ -21,6 +21,7 @@ export enum TrackingEvent {
   FACEBOOK_CLICKED = 'facebook_clicked',
   INSTAGRAM_CLICKED = 'instagram_clicked',
   ACCOUNT_DELETED = 'account_deleted',
+  HIGHLIGHT_CLICKED = 'highlight_clicked',
 }
 
 export enum TrackingProperty {
@@ -34,6 +35,8 @@ export enum TrackingProperty {
   LOCATION = 'location',
   PHONE_NUMBER = 'phone_number',
   SOCIAL_NETWORK = 'social_network',
+  HIGHLIGHT_ID = 'highlight_id',
+  HIGHLIGHT_TITLE = 'highlight_title',
 }
 
 export type TrackingProperties = Record<string, string | number | boolean | null>;

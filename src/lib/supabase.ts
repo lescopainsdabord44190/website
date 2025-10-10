@@ -105,6 +105,53 @@ export interface Database {
           updated_by?: string | null;
         };
       };
+      featured_highlights: {
+        Row: {
+          id: string;
+          title: string;
+          content: any;
+          link: string | null;
+          link_label: string | null;
+          gradient_theme: string;
+          icon: string;
+          order_index: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          content?: any;
+          link?: string | null;
+          link_label?: string | null;
+          gradient_theme?: string;
+          icon?: string;
+          order_index?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          content?: any;
+          link?: string | null;
+          link_label?: string | null;
+          gradient_theme?: string;
+          icon?: string;
+          order_index?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+      };
     };
   };
 }

@@ -1,9 +1,10 @@
 import { useAuth } from '../../contexts/AuthContext';
-import { FileText, Settings } from 'lucide-react';
+import { FileText, Settings, Lightbulb } from 'lucide-react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router';
 import { PagesManager } from './PagesManager';
 import { PageEditor } from './PageEditor';
 import { SettingsManager } from './SettingsManager';
+import { HighlightsManager } from './HighlightsManager';
 
 export function AdminDashboard() {
   const { user, isAdmin } = useAuth();
@@ -22,6 +23,7 @@ export function AdminDashboard() {
 
   const isPageRoute = location.pathname.startsWith('/admin/pages');
   const isSettingsRoute = location.pathname.startsWith('/admin/settings');
+  const isHighlightsRoute = location.pathname.startsWith('/admin/highlights');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FEF5F0] to-white">
@@ -46,6 +48,17 @@ export function AdminDashboard() {
                 Pages
               </Link>
               <Link
+                to="/admin/highlights"
+                className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
+                  isHighlightsRoute
+                    ? 'border-b-2 border-[#328fce] text-[#328fce] bg-blue-50'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                }`}
+              >
+                <Lightbulb className="w-5 h-5" />
+                Infos importantes
+              </Link>
+              <Link
                 to="/admin/settings"
                 className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
                   isSettingsRoute
@@ -65,6 +78,7 @@ export function AdminDashboard() {
               <Route path="pages" element={<PagesManager />} />
               <Route path="pages/new" element={<PageEditor page={null} />} />
               <Route path="pages/:id/edit" element={<PageEditor />} />
+              <Route path="highlights" element={<HighlightsManager />} />
               <Route path="settings" element={<SettingsManager />} />
             </Routes>
           </div>
