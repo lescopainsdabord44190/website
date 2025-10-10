@@ -39,7 +39,7 @@ export function EditorJSRenderer({ content, className = '', enableToc = false }:
             <SafeHtml
               key={index}
               as="p"
-              className="mb-4 text-gray-700 leading-relaxed"
+              className="mb-4 leading-relaxed"
               html={block.data.text}
             />
           );
@@ -76,7 +76,6 @@ export function EditorJSRenderer({ content, className = '', enableToc = false }:
                   <SafeHtml
                     key={itemIndex}
                     as="li"
-                    className="text-gray-700"
                     html={content}
                   />
                 );

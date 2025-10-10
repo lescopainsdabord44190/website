@@ -3,13 +3,12 @@ import { Cookie, X, Check } from 'lucide-react';
 
 export function CookieBanner() {
   const [isVisible, setIsVisible] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
-    // Vérifier si l'utilisateur a déjà donné son consentement
     const consent = localStorage.getItem('cookie-consent');
     if (!consent) {
-      // Petit délai pour l'animation d'entrée
       setTimeout(() => setIsVisible(true), 1000);
     }
   }, []);
@@ -26,6 +25,18 @@ export function CookieBanner() {
     closeWithAnimation();
   };
 
+  const handleMinimize = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      setIsMinimized(true);
+    }, 300);
+  };
+
+  const handleExpand = () => {
+    setIsMinimized(false);
+  };
+
   const closeWithAnimation = () => {
     setIsClosing(true);
     setTimeout(() => {
@@ -34,6 +45,18 @@ export function CookieBanner() {
   };
 
   if (!isVisible) return null;
+
+  if (isMinimized) {
+    return (
+      <button
+        onClick={handleExpand}
+        className="fixed bottom-4 left-4 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-[#328fce] to-[#84c19e] shadow-lg hover:shadow-xl transition-all hover:scale-110 flex items-center justify-center group"
+        aria-label="Afficher les paramètres de cookies"
+      >
+        <Cookie className="w-7 h-7 text-white group-hover:rotate-12 transition-transform" />
+      </button>
+    );
+  }
 
   return (
     <div
@@ -58,9 +81,9 @@ export function CookieBanner() {
               </p>
             </div>
             <button
-              onClick={closeWithAnimation}
+              onClick={handleMinimize}
               className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
-              aria-label="Fermer"
+              aria-label="Réduire"
             >
               <X className="w-4 h-4 md:w-5 md:h-5" />
             </button>

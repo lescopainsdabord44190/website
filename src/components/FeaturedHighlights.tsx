@@ -65,7 +65,6 @@ export function FeaturedHighlights() {
                   key={highlight.id}
                   href={highlight.link}
                   target={isExternal ? '_blank' : undefined}
-                  rel={isExternal ? 'noopener noreferrer' : undefined}
                   onClick={() => {
                     trackEvent(TrackingEvent.HIGHLIGHT_CLICKED, {
                       [TrackingProperty.HIGHLIGHT_ID]: highlight.id,
