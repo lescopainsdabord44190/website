@@ -34,6 +34,33 @@ export function Footer() {
   return (
     <footer className="bg-[#328fce] text-white mt-auto">
       <div className="container mx-auto px-4 py-8">
+        {partners.length > 0 && (
+          <div className="mb-8 pb-8 border-b border-white/20">
+            <h3 className="font-bold text-lg mb-6">Nos partenaires</h3>
+            <div className="overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0">
+              <div className="flex items-center justify-center md:justify-start gap-8 min-w-max md:min-w-0 md:flex-wrap">
+                {partners.map((partner) => (
+                  <a
+                    key={partner.id}
+                    href={partner.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={partner.title}
+                    className="flex items-center justify-center rounded-lg p-4 hover:scale-105 transition-transform duration-200 hover:shadow-lg flex-shrink-0"
+                    style={{ minWidth: '120px', minHeight: '80px' }}
+                  >
+                    <img
+                      src={partner.imageUrl}
+                      alt={partner.title}
+                      className="max-h-16 max-w-[150px] object-contain"
+                    />
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <img src="/logo-white.png" alt="Logo Les copains d'abord" className="h-12 w-auto" />
@@ -60,33 +87,6 @@ export function Footer() {
                 return null;
               }
             })()}
-
-{partners.length > 0 && (
-          <div className="pt-8">
-            <h3 className="font-bold text-lg mb-6">Nos partenaires</h3>
-            <div className="overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0">
-              <div className="flex items-center gap-8 min-w-max md:min-w-0 md:flex-wrap">
-                {partners.map((partner) => (
-                  <a
-                    key={partner.id}
-                    href={partner.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={partner.title}
-                    className="flex items-center justify-center rounded-lg p-4 hover:scale-105 transition-transform duration-200 hover:shadow-lg flex-shrink-0"
-                    style={{ minWidth: '120px', minHeight: '80px' }}
-                  >
-                    <img
-                      src={partner.imageUrl}
-                      alt={partner.title}
-                      className="max-h-16 max-w-[150px] object-contain"
-                    />
-                  </a>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
           </div>
 
           <div>
