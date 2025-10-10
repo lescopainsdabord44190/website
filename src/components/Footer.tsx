@@ -7,12 +7,29 @@ import { OutputData } from '@editorjs/editorjs';
 import { Link } from './Link';
 import { useTracking, TrackingEvent, TrackingProperty } from '../hooks/useTracking';
 
+interface PartnerItem {
+  id: string;
+  imageUrl: string;
+  title: string;
+  link: string;
+}
+
 export function Footer() {
   const { settings } = useSiteSettings();
   const { pages } = usePages();
   const { trackEvent } = useTracking();
   
   const footerPages = pages.filter(page => page.is_active && page.show_in_footer);
+
+  let partners: PartnerItem[] = [];
+  try {
+    if (settings.partners_list) {
+      partners = JSON.parse(settings.partners_list);
+      if (!Array.isArray(partners)) partners = [];
+    }
+  } catch (e) {
+    partners = [];
+  }
 
   return (
     <footer className="bg-[#328fce] text-white mt-auto">
@@ -43,6 +60,31 @@ export function Footer() {
                 return null;
               }
             })()}
+
+{partners.length > 0 && (
+          <div className="pt-8">
+            <h3 className="font-bold text-lg mb-6">Nos partenaires</h3>
+            <div className="flex items-center gap-8">
+              {partners.map((partner) => (
+                <a
+                  key={partner.id}
+                  href={partner.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={partner.title}
+                  className="flex items-center justify-center rounded-lg p-4 hover:scale-105 transition-transform duration-200 hover:shadow-lg"
+                  style={{ minWidth: '120px', minHeight: '80px' }}
+                >
+                  <img
+                    src={partner.imageUrl}
+                    alt={partner.title}
+                    className="max-h-16 max-w-[150px] object-contain"
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
           </div>
 
           <div>
@@ -145,8 +187,6 @@ export function Footer() {
             
           </div>
         </div>
-
-        
 
         <div className="border-t border-white/20 mt-8 pt-6 text-center text-white/80 text-sm">
         {settings.footer_content && (() => {

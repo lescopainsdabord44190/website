@@ -2,7 +2,7 @@ import { Link } from './Link';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { usePages, buildFullPath } from '../hooks/usePages';
 import { useAuth } from '../contexts/AuthContext';
-import { Menu, X, LogOut, Settings, User, LogIn } from 'lucide-react';
+import { Menu, X, LogOut, Settings, User, LogIn, Home } from 'lucide-react';
 import { useState } from 'react';
 import { UserMenu } from './UserMenu';
 
@@ -35,7 +35,8 @@ export function Header() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
-            <Link href="/" className="text-gray-700 hover:text-[#328fce] transition-colors font-medium">
+            <Link href="/" className="text-gray-700 flex items-center gap-2 hover:text-[#328fce] transition-colors font-medium">
+              <Home className="w-4 h-4" />
               Accueil
             </Link>
             {menuPages.map((page) => (

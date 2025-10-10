@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { CookieBanner } from './components/CookieBanner';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { HomePage } from './pages/HomePage';
 import { ContactPage } from './pages/ContactPage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
@@ -11,6 +12,8 @@ import { LoginPage } from './pages/LoginPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { NotFoundPage } from './pages/NotFoundPage';
+import { ServerErrorPage } from './pages/ServerErrorPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { SpeedInsights } from "@vercel/speed-insights/react"
 
@@ -65,7 +68,8 @@ function Layout() {
   const showHeaderFooter = 
     location.pathname !== '/login' && 
     location.pathname !== '/forgot-password' && 
-    location.pathname !== '/reset-password';
+    location.pathname !== '/reset-password' &&
+    location.pathname !== '/404';
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -79,6 +83,7 @@ function Layout() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/404" element={<NotFoundPage />} />
           <Route
             path="/profile"
             element={
@@ -105,11 +110,19 @@ function Layout() {
 }
 
 function App() {
+  const content = (
+    <AuthProvider>
+      <Layout />
+    </AuthProvider>
+  );
+
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Layout />
-      </AuthProvider>
+      {import.meta.env.PROD ? (
+        <ErrorBoundary>{content}</ErrorBoundary>
+      ) : (
+        content
+      )}
     </BrowserRouter>
   );
 }

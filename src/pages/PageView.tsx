@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useLocation, Link as RouterLink, useNavigate } from 'react-router';
+import { useLocation, Link as RouterLink, useNavigate, Navigate } from 'react-router';
 import { usePageBySlug, usePages, buildFullPath } from '../hooks/usePages';
 import { Link } from '../components/Link';
 import { Home, ChevronRight, Edit } from 'lucide-react';
@@ -99,16 +99,7 @@ export function PageView() {
   }
 
   if (!page) {
-    return (
-      <div className="bg-gradient-to-br from-[#FEF5F0] to-white py-12 min-h-[400px] flex items-center">
-        <div className="container mx-auto px-4">
-          <div className="max-w-6xl mx-auto text-center">
-            <h1 className="text-4xl font-bold mb-4 text-gray-800">Page non trouvée</h1>
-            <p className="text-lg text-gray-600">La page que vous recherchez n'existe pas.</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <Navigate to="/404" replace />;
   }
 
   const buildBreadcrumb = () => {

@@ -1,5 +1,5 @@
 import { useSiteSettings } from '../hooks/useSiteSettings';
-import { Phone, Clock } from 'lucide-react';
+import { Phone, CalendarCheck2 } from 'lucide-react';
 import { Link } from '../components/Link';
 import { SafeHtml } from '../components/SafeHtml';
 import { EditorJSRenderer } from '../components/EditorJSRenderer';
@@ -66,7 +66,7 @@ export function HomePage() {
                   })}
                   className="flex items-center justify-center gap-2 bg-[#84c19e] text-white px-6 py-3 rounded-full hover:bg-[#328fce] transition-all hover:scale-105 font-medium shadow-lg"
                 >
-                  <Clock className="w-5 h-5" />
+                  <CalendarCheck2 className="w-5 h-5" />
                   Portail familles
                 </Link>
               </div>
