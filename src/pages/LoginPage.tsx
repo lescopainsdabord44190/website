@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { LogIn, LogOut } from 'lucide-react';
 import { Link } from '../components/Link';
 import { PasswordInput } from '../components/PasswordInput';
+import { TurnstileWidget } from '../components/TurnstileWidget';
+import { TURNSTILE_SITE_KEY } from '../lib/turnstile';
 import { supabase } from '../lib/supabase';
 
 export function LoginPage() {
@@ -14,17 +16,49 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+  const [showMascottes, setShowMascottes] = useState(true);
+  const [mascottesScared, setMascottesScared] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!turnstileToken) {
+      setError('Veuillez valider le captcha');
+      return;
+    }
+
     setLoading(true);
 
     try {
+      const verifyResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-turnstile`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ token: turnstileToken }),
+        }
+      );
+
+      const verifyData = await verifyResponse.json();
+
+      if (!verifyData.success) {
+        setError('Échec de la vérification du captcha');
+        setTurnstileToken(null);
+        return;
+      }
+
       const { error } = await signIn(email, password);
       if (error) {
         setError('Email ou mot de passe incorrect');
+        setTurnstileToken(null);
       } else {
+        setRedirecting(true);
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const { data: roleData } = await supabase
@@ -34,11 +68,17 @@ export function LoginPage() {
             .eq('role', 'admin')
             .maybeSingle();
           
-          navigate(roleData ? '/admin' : '/');
+          const minDelay = new Promise(resolve => setTimeout(resolve, 1000));
+          await minDelay;
+          
+          setTimeout(() => {
+            navigate(roleData ? '/admin' : '/');
+          }, 1000);
         }
       }
     } catch (err) {
       setError('Une erreur est survenue');
+      setTurnstileToken(null);
     } finally {
       setLoading(false);
     }
@@ -48,12 +88,18 @@ export function LoginPage() {
     setLoggingOut(true);
     try {
       await signOut();
-      // L'utilisateur reste sur cette page
     } catch (err) {
       setError('Erreur lors de la déconnexion');
     } finally {
       setLoggingOut(false);
     }
+  };
+
+  const handleMascottesClick = () => {
+    setMascottesScared(true);
+    setTimeout(() => {
+      setShowMascottes(false);
+    }, 500);
   };
 
   return (
@@ -104,106 +150,232 @@ export function LoginPage() {
       </div>
 
       <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-[#FEF5F0] to-white">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md relative">
           <div className="lg:hidden text-center mb-8">
             <img src="/logo.png" alt="Logo" className="h-16 w-auto mx-auto mb-4" />
           </div>
 
-          <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">Connexion</h1>
-              <p className="text-gray-600">Accédez à votre espace</p>
-            </div>
-
-            {loggedInUser && (
-              <div className="mb-6 p-5 bg-gradient-to-br from-[#328fce]/10 to-[#84c19e]/10 border-2 border-[#328fce]/20 rounded-2xl">
-                <p className="text-sm font-medium text-gray-600 mb-3">
-                  Vous êtes connecté en tant que :
-                </p>
-                <div className="flex items-center gap-3">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt="Avatar"
-                      className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md flex-shrink-0"
+          {redirecting && showMascottes && (
+            <>
+              <style>{`
+                @keyframes slideUpPeek {
+                  0% {
+                    top: 0;
+                    opacity: 0;
+                  }
+                  100% {
+                    top: -55px;
+                    opacity: 1;
+                  }
+                }
+                @keyframes popIn {
+                  0% {
+                    transform: scale(0);
+                    opacity: 0;
+                  }
+                  50% {
+                    transform: scale(1.1);
+                  }
+                  100% {
+                    transform: scale(1);
+                    opacity: 1;
+                  }
+                }
+                @keyframes scaredHide {
+                  0% {
+                    top: -55px;
+                    opacity: 1;
+                  }
+                  15% {
+                    top: -65px;
+                  }
+                  100% {
+                    top: 0;
+                    opacity: 0;
+                  }
+                }
+                @keyframes bubbleDisappear {
+                  0% {
+                    transform: scale(1);
+                    opacity: 1;
+                  }
+                  100% {
+                    transform: scale(0);
+                    opacity: 0;
+                  }
+                }
+                .peek-mascot-left {
+                  animation: slideUpPeek 0.8s ease-out 0.2s forwards;
+                }
+                .peek-mascot-right {
+                  animation: slideUpPeek 0.8s ease-out 0.5s forwards;
+                }
+                .peek-mascot-left.scared {
+                  animation: scaredHide 0.5s ease-in forwards;
+                }
+                .peek-mascot-right.scared {
+                  animation: scaredHide 0.5s ease-in 0.05s forwards;
+                }
+                .speech-bubble {
+                  animation: popIn 0.4s ease-out 1s forwards;
+                }
+                .speech-bubble.scared {
+                  animation: bubbleDisappear 0.3s ease-out forwards;
+                }
+              `}</style>
+              
+              <div 
+                className="absolute inset-0 cursor-pointer z-0"
+                onClick={handleMascottesClick}
+              >
+                <img 
+                  src="/illustrations/mascottes/demis mascotte1.png" 
+                  alt="Mascotte 1" 
+                  className={`absolute left-8 w-20 h-auto object-contain peek-mascot-left ${mascottesScared ? 'scared' : ''}`}
+                  style={{ top: 0, opacity: 0 }}
+                />
+                <img 
+                  src="/illustrations/mascottes/demis mascotte2.png" 
+                  alt="Mascotte 2" 
+                  className={`absolute right-8 w-20 h-auto object-contain peek-mascot-right ${mascottesScared ? 'scared' : ''}`}
+                  style={{ top: 0, opacity: 0 }}
+                />
+                <div className={`absolute left-[100px] -translate-x-1/2 speech-bubble ${mascottesScared ? 'scared' : ''}`} style={{ top: '-180px', opacity: 0 }}>
+                  <div className="relative">
+                    <img 
+                      src="/illustrations/mascottes/speech-bubble.svg" 
+                      alt="Speech bubble" 
+                      className="w-64 h-auto"
                     />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#328fce] to-[#84c19e] flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
-                      {loggedInUser.email?.[0].toUpperCase() || '?'}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-800 truncate">
-                      {loggedInUser.email}
-                    </p>
-                    <button
-                      onClick={handleLogout}
-                      disabled={loggingOut}
-                      className="flex gap-1 items-center text-sm text-blue-600 hover:text-[#328fce] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      {loggingOut ? 'Déconnexion...' : 'Déconnexion'}
-                    </button>
                   </div>
                 </div>
               </div>
+            </>
+          )}
+
+          <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-10 relative z-10">
+            {redirecting ? (
+              <div className="text-center py-12">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                  Connexion réussie !
+                </h2>
+                <p className="text-gray-600 mb-4">
+                  Redirection en cours...
+                </p>
+                <div className="flex justify-center gap-1">
+                  <div className="w-2 h-2 bg-[#328fce] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2 h-2 bg-[#84c19e] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2 h-2 bg-[#ff9fa8] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="mb-8">
+                  <h1 className="text-3xl font-bold text-gray-800 mb-2">Connexion</h1>
+                  <p className="text-gray-600">Accédez à votre espace</p>
+                </div>
+
+                {loggedInUser && !redirecting && (
+                  <div className="mb-6 p-5 bg-gradient-to-br from-[#328fce]/10 to-[#84c19e]/10 border-2 border-[#328fce]/20 rounded-2xl">
+                    <p className="text-sm font-medium text-gray-600 mb-3">
+                      Vous êtes connecté en tant que :
+                    </p>
+                    <div className="flex items-center gap-3">
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt="Avatar"
+                          className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#328fce] to-[#84c19e] flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                          {loggedInUser.email?.[0].toUpperCase() || '?'}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-800 truncate">
+                          {loggedInUser.email}
+                        </p>
+                        <button
+                          onClick={handleLogout}
+                          disabled={loggingOut}
+                          className="flex gap-1 items-center text-sm text-blue-600 hover:text-[#328fce] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          {loggingOut ? 'Déconnexion...' : 'Déconnexion'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-800 flex items-center gap-2">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Adresse email
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#328fce] focus:border-[#328fce] outline-none transition-all text-gray-800"
+                      placeholder="votre@email.fr"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Mot de passe
+                    </label>
+                    <PasswordInput
+                      id="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                    />
+                  </div>
+
+                  <div className="flex justify-center">
+                    <TurnstileWidget
+                      sitekey={TURNSTILE_SITE_KEY}
+                      onSuccess={(token) => setTurnstileToken(token)}
+                      onError={() => setTurnstileToken(null)}
+                      onExpire={() => setTurnstileToken(null)}
+                      theme="light"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading || !turnstileToken}
+                    className="w-full bg-gradient-to-r from-[#328fce] to-[#84c19e] text-white px-6 py-3.5 rounded-xl hover:shadow-xl transition-all hover:scale-[1.02] font-semibold text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  >
+                    <LogIn className="w-5 h-5" />
+                    {loading ? 'Connexion...' : 'Se connecter'}
+                  </button>
+                </form>
+
+                <div className="mt-6 text-center">
+                  <Link
+                    href="/forgot-password"
+                    className="text-sm text-gray-600 hover:text-[#328fce] transition-colors font-medium"
+                  >
+                    Mot de passe oublié ?
+                  </Link>
+                </div>
+              </>
             )}
-
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-800 flex items-center gap-2">
-                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                <span>{error}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Adresse email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#328fce] focus:border-[#328fce] outline-none transition-all text-gray-800"
-                  placeholder="votre@email.fr"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
-                  Mot de passe
-                </label>
-                <PasswordInput
-                  id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-[#328fce] to-[#84c19e] text-white px-6 py-3.5 rounded-xl hover:shadow-xl transition-all hover:scale-[1.02] font-semibold text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-              >
-                <LogIn className="w-5 h-5" />
-                {loading ? 'Connexion...' : 'Se connecter'}
-              </button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <Link
-                href="/forgot-password"
-                className="text-sm text-gray-600 hover:text-[#328fce] transition-colors font-medium"
-              >
-                Mot de passe oublié ?
-              </Link>
-            </div>
           </div>
 
           <p className="text-center text-sm text-gray-500 mt-6">

@@ -2,7 +2,7 @@ import { Link } from './Link';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { usePages, buildFullPath } from '../hooks/usePages';
 import { useAuth } from '../contexts/AuthContext';
-import { Menu, X, LogOut, Settings, User } from 'lucide-react';
+import { Menu, X, LogOut, Settings, User, LogIn } from 'lucide-react';
 import { useState } from 'react';
 import { UserMenu } from './UserMenu';
 
@@ -52,7 +52,15 @@ export function Header() {
             </Link>
             {user ? (
               <UserMenu />
-            ) : null}
+            ) : (
+              <Link
+                href="/login"
+                className="flex items-center gap-2 bg-[#328fce] text-white px-4 py-2 rounded-lg hover:bg-[#2a7ab8] transition-colors font-medium shadow-sm"
+              >
+                <LogIn className="w-4 h-4" />
+                Se connecter
+              </Link>
+            )}
           </nav>
 
           <button
@@ -90,7 +98,7 @@ export function Header() {
               >
                 Contact
               </Link>
-              {user && (
+              {user ? (
                 <>
                   <Link
                     href="/profile"
@@ -121,6 +129,15 @@ export function Header() {
                     Déconnexion
                   </button>
                 </>
+              ) : (
+                <Link
+                  href="/login"
+                  className="flex items-center gap-2 bg-[#328fce] text-white px-4 py-3 rounded-lg hover:bg-[#2a7ab8] transition-colors font-medium shadow-sm justify-center mt-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <LogIn className="w-4 h-4" />
+                  Se connecter
+                </Link>
               )}
             </div>
           </nav>

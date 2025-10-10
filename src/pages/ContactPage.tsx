@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Mail, Phone, MapPin, Send } from 'lucide-react';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { EditorJSRenderer } from '../components/EditorJSRenderer';
+import { TurnstileWidget } from '../components/TurnstileWidget';
+import { TURNSTILE_SITE_KEY } from '../lib/turnstile';
 import { OutputData } from '@editorjs/editorjs';
 import { useTracking, TrackingEvent, TrackingProperty } from '../hooks/useTracking';
 
@@ -16,13 +18,41 @@ export function ContactPage() {
   });
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStatus('loading');
     setErrorMessage('');
 
+    if (!turnstileToken) {
+      setErrorMessage('Veuillez valider le captcha');
+      return;
+    }
+
+    setStatus('loading');
+
     try {
+      const verifyResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-turnstile`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ token: turnstileToken }),
+        }
+      );
+
+      const verifyData = await verifyResponse.json();
+
+      if (!verifyData.success) {
+        setStatus('error');
+        setErrorMessage('Échec de la vérification du captcha');
+        setTurnstileToken(null);
+        return;
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-contact-email`,
         {
@@ -41,6 +71,7 @@ export function ContactPage() {
 
       setStatus('success');
       setFormData({ name: '', email: '', subject: '', message: '' });
+      setTurnstileToken(null);
       
       trackEvent(TrackingEvent.CONTACT_FORM_SUBMITTED, {
         [TrackingProperty.SUCCESS]: true,
@@ -50,6 +81,7 @@ export function ContactPage() {
       console.error('Error sending message:', error);
       setStatus('error');
       setErrorMessage('Une erreur est survenue lors de l\'envoi du message. Veuillez réessayer.');
+      setTurnstileToken(null);
       
       trackEvent(TrackingEvent.CONTACT_FORM_SUBMITTED, {
         [TrackingProperty.SUCCESS]: false,
@@ -58,6 +90,7 @@ export function ContactPage() {
       });
     }
   };
+  const contact_additionalContent = settings.contact_additionalContent ? JSON.parse(settings.contact_additionalContent) as OutputData : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FEF5F0] to-white py-12">
@@ -148,9 +181,19 @@ export function ContactPage() {
                   />
                 </div>
 
+                <div className="flex justify-center">
+                  <TurnstileWidget
+                    sitekey={TURNSTILE_SITE_KEY}
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    onError={() => setTurnstileToken(null)}
+                    onExpire={() => setTurnstileToken(null)}
+                    theme="light"
+                  />
+                </div>
+
                 <button
                   type="submit"
-                  disabled={status === 'loading'}
+                  disabled={status === 'loading' || !turnstileToken}
                   className="w-full bg-[#328fce] text-white px-6 py-3 rounded-full hover:bg-[#84c19e] transition-all hover:scale-105 font-medium shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-5 h-5" />
@@ -160,7 +203,15 @@ export function ContactPage() {
             </div>
 
             <div className="space-y-6">
-              <div className="bg-gradient-to-br from-[#328fce] to-[#84c19e] rounded-2xl shadow-lg p-8 text-white">
+              <div className="relative bg-gradient-to-br from-[#328fce] to-[#84c19e] rounded-2xl shadow-lg p-8 text-white">
+                <div className=" h-full w-full">
+                  <img
+                    src="/illustrations/mascottes/mascotte 2.png"
+                    alt="Mascotte"
+                    className="absolute bottom-0 right-4 w-32 h-32 object-contain z-10"
+                  />
+                </div>
+                
                 <h2 className="text-2xl font-bold mb-6">Nos coordonnées</h2>
                 <div className="space-y-4">
                   {settings.contact_phone && (
@@ -192,14 +243,17 @@ export function ContactPage() {
                       </div>
                     </a>
                   )}
-
+                  {settings.contact_address && 
                   <div className="flex items-start gap-3">
                     <MapPin className="w-6 h-6 mt-1 flex-shrink-0" />
                     <div>
                       <div className="font-medium">Adresse</div>
-                      <div className="text-white/90">Gétigné, Loire-Atlantique</div>
+                      <EditorJSRenderer
+                        className="[&_p]:text-white/90 [&_p]:mb-2 [&_h1]:text-white [&_h2]:text-white [&_h3]:text-white [&_h4]:text-white [&_h5]:text-white [&_h6]:text-white [&_li]:text-white/90 [&_blockquote]:bg-white/10 [&_blockquote]:border-white/40 [&_blockquote]:text-white/90 [&_a]:border-b [&_a]:border-dotted [&_a]:border-white/60 [&_a]:hover:border-white text-sm"
+                        content={JSON.parse(settings.contact_address) as OutputData}
+                      />
                     </div>
-                  </div>
+                  </div>}
                 </div>
               </div>
 
@@ -227,19 +281,18 @@ export function ContactPage() {
                   }
                 })()}
               </div>
-
-              <div className="relative rounded-2xl overflow-hidden shadow-lg h-64">
-                <img
-                  src="/illustrations/mascottes/mascotte 2.png"
-                  alt="Mascotte"
-                  className="absolute bottom-0 right-4 w-32 h-32 object-contain z-10"
-                />
-                <div className="absolute inset-0 bg-gradient-to-br from-[#ffbf40] to-[#ff9fa8] opacity-50"></div>
+              
               </div>
+              
             </div>
+            {contact_additionalContent &&  contact_additionalContent.blocks.length > 0 &&
+                <div className="relative rounded-2xl overflow-hidden shadow-lg h-auto p-8 mt-8">
+                  <EditorJSRenderer content={contact_additionalContent} />
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#ffbf40] to-[#ff9fa8] opacity-50"></div>
+                </div>
+              }
           </div>
         </div>
       </div>
-    </div>
   );
 }
