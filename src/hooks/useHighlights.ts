@@ -12,6 +12,8 @@ export interface Highlight {
   icon: string;
   order_index: number;
   is_active: boolean;
+  start_date: string | null;
+  end_date: string | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -34,7 +36,12 @@ export function useHighlights(activeOnly: boolean = false) {
         .order('order_index', { ascending: true });
 
       if (activeOnly) {
-        query = query.eq('is_active', true).limit(3);
+        const now = new Date().toISOString();
+        query = query
+          .eq('is_active', true)
+          .or('start_date.is.null,start_date.lte.' + now)
+          .or('end_date.is.null,end_date.gt.' + now)
+          .limit(3);
       }
 
       const { data, error } = await query;

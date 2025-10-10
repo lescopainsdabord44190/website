@@ -64,24 +64,26 @@ export function Footer() {
 {partners.length > 0 && (
           <div className="pt-8">
             <h3 className="font-bold text-lg mb-6">Nos partenaires</h3>
-            <div className="flex items-center gap-8">
-              {partners.map((partner) => (
-                <a
-                  key={partner.id}
-                  href={partner.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={partner.title}
-                  className="flex items-center justify-center rounded-lg p-4 hover:scale-105 transition-transform duration-200 hover:shadow-lg"
-                  style={{ minWidth: '120px', minHeight: '80px' }}
-                >
-                  <img
-                    src={partner.imageUrl}
-                    alt={partner.title}
-                    className="max-h-16 max-w-[150px] object-contain"
-                  />
-                </a>
-              ))}
+            <div className="overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0">
+              <div className="flex items-center gap-8 min-w-max md:min-w-0 md:flex-wrap">
+                {partners.map((partner) => (
+                  <a
+                    key={partner.id}
+                    href={partner.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={partner.title}
+                    className="flex items-center justify-center rounded-lg p-4 hover:scale-105 transition-transform duration-200 hover:shadow-lg flex-shrink-0"
+                    style={{ minWidth: '120px', minHeight: '80px' }}
+                  >
+                    <img
+                      src={partner.imageUrl}
+                      alt={partner.title}
+                      className="max-h-16 max-w-[150px] object-contain"
+                    />
+                  </a>
+                ))}
+              </div>
             </div>
           </div>
         )}
