@@ -152,6 +152,114 @@ export interface Database {
           updated_by?: string | null;
         };
       };
+      counselors: {
+        Row: {
+          id: string;
+          slug: string;
+          first_name: string;
+          last_name: string | null;
+          role_title: string | null;
+          tagline: string | null;
+          bio: string | null;
+          photo_url: string | null;
+          focus_areas: string[];
+          order_index: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          first_name: string;
+          last_name?: string | null;
+          role_title?: string | null;
+          tagline?: string | null;
+          bio?: string | null;
+          photo_url?: string | null;
+          focus_areas?: string[] | null;
+          order_index?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          slug?: string;
+          first_name?: string;
+          last_name?: string | null;
+          role_title?: string | null;
+          tagline?: string | null;
+          bio?: string | null;
+          photo_url?: string | null;
+          focus_areas?: string[] | null;
+          order_index?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      projects: {
+        Row: {
+          id: string;
+          slug: string;
+          title: string;
+          subtitle: string | null;
+          short_description: string | null;
+          age_group: string | null;
+          cover_image_url: string | null;
+          content: any;
+          objectives: string[];
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          title: string;
+          subtitle?: string | null;
+          short_description?: string | null;
+          age_group?: string | null;
+          cover_image_url?: string | null;
+          content?: any;
+          objectives?: string[] | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          slug?: string;
+          title?: string;
+          subtitle?: string | null;
+          short_description?: string | null;
+          age_group?: string | null;
+          cover_image_url?: string | null;
+          content?: any;
+          objectives?: string[] | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      project_counselors: {
+        Row: {
+          project_id: string;
+          counselor_id: string;
+          role: string | null;
+        };
+        Insert: {
+          project_id: string;
+          counselor_id: string;
+          role?: string | null;
+        };
+        Update: {
+          project_id?: string;
+          counselor_id?: string;
+          role?: string | null;
+        };
+      };
     };
   };
 }

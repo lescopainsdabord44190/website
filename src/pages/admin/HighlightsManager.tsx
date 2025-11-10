@@ -1,10 +1,26 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import type { CSSProperties } from 'react';
 import { useHighlights, Highlight } from '../../hooks/useHighlights';
-import { Plus, Edit, Trash2, GripVertical, Save, X, Copy } from 'lucide-react';
+import { Plus, Edit, Trash2, GripVertical, Save, X, Copy, ChevronDown, ChevronRight } from 'lucide-react';
 import { RichTextEditor } from '../../components/RichTextEditor';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { OutputData } from '@editorjs/editorjs';
 import * as LucideIcons from 'lucide-react';
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const GRADIENT_THEMES = [
   { id: 'blue-green', name: 'Annonce', colors: 'from-[#84c19e] to-[#328fce]', description: 'Information générale' },
@@ -25,7 +41,15 @@ const AVAILABLE_ICONS = [
 ];
 
 export function HighlightsManager() {
-  const { highlights, loading, createHighlight, updateHighlight, deleteHighlight, reorderHighlights } = useHighlights();
+  const {
+    highlights: activeHighlights,
+    loading,
+    createHighlight,
+    updateHighlight,
+    deleteHighlight,
+    reorderHighlights,
+    fetchHighlightsByStatus,
+  } = useHighlights({ status: 'active' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [formData, setFormData] = useState<Partial<Highlight>>({
@@ -40,10 +64,27 @@ export function HighlightsManager() {
     end_date: null,
   });
   const [saving, setSaving] = useState(false);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [startDateInput, setStartDateInput] = useState('');
   const [endDateInput, setEndDateInput] = useState('');
+  
+  const [archivedHighlights, setArchivedHighlights] = useState<Highlight[]>([]);
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const [archivedLoaded, setArchivedLoaded] = useState(false);
+  const [archivedLoading, setArchivedLoading] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
+  const [activeHighlightsOrder, setActiveHighlightsOrder] = useState<Highlight[]>([]);
+  const [isReordering, setIsReordering] = useState(false);
+  
+  const now = new Date();
+  const expiredHighlights = activeHighlightsOrder.filter(
+    (highlight) => highlight.end_date && new Date(highlight.end_date) <= now
+  );
+  const visibleActiveHighlights = activeHighlightsOrder.filter(
+    (highlight) => !highlight.end_date || new Date(highlight.end_date) > now
+  );
+  const totalHighlightsCount = activeHighlightsOrder.length + archivedHighlights.length;
   
   const [dialog, setDialog] = useState<{
     isOpen: boolean;
@@ -59,6 +100,28 @@ export function HighlightsManager() {
     title: '',
     message: '',
   });
+
+  const loadArchivedHighlights = useCallback(async () => {
+    setArchivedLoading(true);
+    const result = await fetchHighlightsByStatus(false);
+    if (result.success) {
+      setArchivedHighlights(result.data);
+      setArchivedLoaded(true);
+    }
+    setArchivedLoading(false);
+  }, [fetchHighlightsByStatus]);
+
+  const toggleArchivedSection = async () => {
+    const nextValue = !archivedOpen;
+    setArchivedOpen(nextValue);
+    if (nextValue && !archivedLoaded && !archivedLoading) {
+      await loadArchivedHighlights();
+    }
+  };
+
+  useEffect(() => {
+    setActiveHighlightsOrder(activeHighlights);
+  }, [activeHighlights]);
 
   const handleEdit = (highlight: Highlight) => {
     setEditingId(highlight.id);
@@ -79,7 +142,7 @@ export function HighlightsManager() {
       link: '',
       gradient_theme: 'blue-green',
       icon: 'Lightbulb',
-      order_index: highlights.length,
+      order_index: totalHighlightsCount,
       is_active: true,
       start_date: null,
       end_date: null,
@@ -185,6 +248,9 @@ export function HighlightsManager() {
             isDangerous: false,
           });
         } else {
+          if (archivedLoaded) {
+            await loadArchivedHighlights();
+          }
           setDialog({ ...dialog, isOpen: false });
         }
       },
@@ -207,7 +273,7 @@ export function HighlightsManager() {
           link_label: highlight.link_label,
           gradient_theme: highlight.gradient_theme,
           icon: highlight.icon,
-          order_index: highlights.length,
+          order_index: totalHighlightsCount,
           is_active: false,
           start_date: highlight.start_date,
           end_date: highlight.end_date,
@@ -240,13 +306,60 @@ export function HighlightsManager() {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }, 100);
           }
+          
+          if (archivedLoaded) {
+            await loadArchivedHighlights();
+          }
         }
       },
     });
   };
 
+  const handleActiveDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const now = new Date();
+    const visibleIds = activeHighlightsOrder
+      .filter((highlight) => !highlight.end_date || new Date(highlight.end_date) > now)
+      .map((highlight) => highlight.id);
+
+    const activeIndexVisible = visibleIds.indexOf(String(active.id));
+    const overIndexVisible = visibleIds.indexOf(String(over.id));
+
+    if (activeIndexVisible === -1 || overIndexVisible === -1) {
+      return;
+    }
+
+    const previousOrder = activeHighlightsOrder.slice();
+    const fromId = visibleIds[activeIndexVisible];
+    const toId = visibleIds[overIndexVisible];
+    const fromIndex = previousOrder.findIndex((item) => item.id === fromId);
+    const toIndex = previousOrder.findIndex((item) => item.id === toId);
+
+    if (fromIndex === -1 || toIndex === -1) {
+      return;
+    }
+
+    const reordered = arrayMove(previousOrder, fromIndex, toIndex);
+    setActiveHighlightsOrder(reordered);
+
+    setIsReordering(true);
+    const result = await reorderHighlights(reordered);
+    if (!result?.success) {
+      setActiveHighlightsOrder(previousOrder);
+    }
+    setIsReordering(false);
+  };
+
   const toggleActive = async (highlight: Highlight) => {
-    await updateHighlight(highlight.id, { is_active: !highlight.is_active });
+    const result = await updateHighlight(highlight.id, { is_active: !highlight.is_active });
+    if (result?.success && archivedLoaded) {
+      await loadArchivedHighlights();
+    }
   };
 
   const formatDateInput = (value: string): string => {
@@ -264,43 +377,6 @@ export function HighlightsManager() {
   const renderIcon = (iconName: string) => {
     const Icon = (LucideIcons as any)[iconName];
     return Icon ? <Icon className="w-5 h-5" /> : <LucideIcons.Lightbulb className="w-5 h-5" />;
-  };
-
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    setDragOverIndex(index);
-  };
-
-  const handleDragLeave = () => {
-    setDragOverIndex(null);
-  };
-
-  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      setDraggedIndex(null);
-      setDragOverIndex(null);
-      return;
-    }
-
-    const reordered = [...highlights];
-    const [removed] = reordered.splice(draggedIndex, 1);
-    reordered.splice(dropIndex, 0, removed);
-
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-
-    await reorderHighlights(reordered);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDragOverIndex(null);
   };
 
   if (loading) {
@@ -323,7 +399,7 @@ export function HighlightsManager() {
         {!isCreating && !editingId && (
           <button
             onClick={handleCreate}
-            disabled={highlights.filter(h => h.is_active).length >= 3}
+            disabled={visibleActiveHighlights.length >= 3}
             className="flex items-center gap-2 bg-[#328fce] text-white px-6 py-3 rounded-lg hover:bg-[#84c19e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             <Plus className="w-5 h-5" />
@@ -582,321 +658,112 @@ export function HighlightsManager() {
         </div>
       )}
 
-      {highlights.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">Aucune information à afficher</p>
-          <p className="text-sm text-gray-500 mt-2">
-            Cliquez sur "Nouvelle information" pour commencer
-          </p>
-        </div>
-      ) : (
-        <>
-          {(() => {
-            const now = new Date();
-            const activeHighlights = highlights.filter(h => {
-              const isActive = h.is_active;
-              const isNotExpired = !h.end_date || new Date(h.end_date) > now;
-              return isActive && isNotExpired;
-            });
-            const inactiveHighlights = highlights.filter(h => {
-              const isActive = h.is_active;
-              const isNotExpired = !h.end_date || new Date(h.end_date) > now;
-              return !isActive || !isNotExpired;
-            });
+      {(() => {
+          const combinedArchivedHighlights = archivedLoaded
+            ? [
+                ...expiredHighlights,
+                ...archivedHighlights.filter(
+                  (archivedHighlight) =>
+                    !expiredHighlights.some(
+                      (expiredHighlight) => expiredHighlight.id === archivedHighlight.id
+                    )
+                ),
+              ]
+            : expiredHighlights;
 
-            return (
-              <>
-                {/* Highlights actifs */}
-                {activeHighlights.length > 0 && (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold text-green-700">Actifs</h3>
-                      <span className="text-sm text-gray-600">({activeHighlights.length})</span>
-                    </div>
-                    {activeHighlights.map((highlight) => {
-                      const globalIndex = highlights.findIndex(h => h.id === highlight.id);
-                      const theme = GRADIENT_THEMES.find(t => t.id === highlight.gradient_theme);
-                      const isDragging = draggedIndex === globalIndex;
-                      const isDragOver = dragOverIndex === globalIndex;
-                      
-                      return (
-                        <div
-                          key={highlight.id}
-                          draggable
-                          onDragStart={() => handleDragStart(globalIndex)}
-                          onDragOver={(e) => handleDragOver(e, globalIndex)}
-                          onDragLeave={handleDragLeave}
-                          onDrop={(e) => handleDrop(e, globalIndex)}
-                          onDragEnd={handleDragEnd}
-                          className={`bg-white rounded-lg shadow-md overflow-hidden border-2 transition-all border-green-200 ${
-                            isDragging ? 'opacity-50 scale-95' : ''
-                          } ${
-                            isDragOver ? 'border-[#328fce] border-dashed scale-105' : ''
-                          }`}
-                        >
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="flex items-center gap-2 text-gray-400 hover:text-gray-600 cursor-move mt-1">
-                        <GripVertical className="w-5 h-5" />
-                      </div>
-                      
-                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${theme?.colors} flex items-center justify-center text-white flex-shrink-0`}>
-                        {renderIcon(highlight.icon)}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-lg font-semibold text-gray-800">{highlight.title}</h3>
-                          {!highlight.is_active && (
-                            <span className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">
-                              Inactif
-                            </span>
-                          )}
-                          {theme && (
-                            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                              {theme.name}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {highlight.link && (
-                            <>
-                              <p className="truncate">Lien: {highlight.link}</p>
-                              {highlight.link_label && (
-                                <p className="text-xs text-blue-600 mt-1">Bouton: {highlight.link_label}</p>
-                              )}
-                            </>
-                          )}
-                          {highlight.start_date && (() => {
-                            const startDate = new Date(highlight.start_date);
-                            const isPast = startDate <= new Date();
-                            return (
-                              <p className="text-xs text-green-600 mt-1">
-                                {isPast ? 'Publié le' : 'Programmé pour le'} {startDate.toLocaleDateString('fr-FR', { 
-                                  year: 'numeric', 
-                                  month: 'long', 
-                                  day: 'numeric'
-                                })}
-                              </p>
-                            );
-                          })()}
-                          {highlight.end_date && (() => {
-                            const endDate = new Date(highlight.end_date);
-                            const isPast = endDate <= new Date();
-                            return (
-                              <p className="text-xs text-orange-600 mt-1">
-                                {isPast ? 'Expiré le' : 'Expirera le'} {endDate.toLocaleDateString('fr-FR', { 
-                                  year: 'numeric', 
-                                  month: 'long', 
-                                  day: 'numeric'
-                                })}
-                              </p>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => toggleActive(highlight)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          highlight.is_active ? 'bg-[#328fce]' : 'bg-gray-300'
-                        }`}
-                        title={highlight.is_active ? 'Désactiver' : 'Activer'}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            highlight.is_active ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                      <button
-                        onClick={() => handleEdit(highlight)}
-                        className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                        title="Modifier"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDuplicate(highlight)}
-                        className="p-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
-                        title="Dupliquer"
-                      >
-                        <Copy className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(highlight.id)}
-                        className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-                        title="Supprimer"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
+          return (
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-green-700">Actifs</h3>
+                  <span className="text-sm text-gray-600">({visibleActiveHighlights.length})</span>
                 </div>
+                {visibleActiveHighlights.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg">
+                    <p className="text-gray-600">Aucune information à afficher</p>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Cliquez sur "Nouvelle information" pour commencer
+                    </p>
+                  </div>
+                ) : (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleActiveDragEnd}
+                  >
+                    <SortableContext
+                      items={visibleActiveHighlights.map((highlight) => highlight.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-4">
+                        {visibleActiveHighlights.map((highlight) => (
+                          <SortableHighlightCard
+                            key={highlight.id}
+                            highlight={highlight}
+                            renderIcon={renderIcon}
+                            onToggle={toggleActive}
+                            onEdit={handleEdit}
+                            onDuplicate={handleDuplicate}
+                            onDelete={handleDelete}
+                            isReordering={isReordering}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )}
               </div>
-            );
-          })}
-                  </div>
-                )}
 
-                {/* Highlights inactifs ou expirés */}
-                {inactiveHighlights.length > 0 && (
-                  <div className="space-y-4 mt-8">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold text-gray-500">Inactifs ou expirés</h3>
-                      <span className="text-sm text-gray-600">({inactiveHighlights.length})</span>
-                    </div>
-                    {inactiveHighlights.map((highlight) => {
-                      const globalIndex = highlights.findIndex(h => h.id === highlight.id);
-                      const theme = GRADIENT_THEMES.find(t => t.id === highlight.gradient_theme);
-                      const isDragging = draggedIndex === globalIndex;
-                      const isDragOver = dragOverIndex === globalIndex;
-                      const now = new Date();
-                      const isExpired = highlight.end_date && new Date(highlight.end_date) <= now;
-                      const isPending = highlight.start_date && new Date(highlight.start_date) > now;
-                      
-                      return (
-                        <div
+              <div className="border border-gray-200 rounded-2xl bg-white shadow-sm">
+                <button
+                  type="button"
+                  onClick={toggleArchivedSection}
+                  className="w-full flex items-center gap-3 px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+                >
+                  {archivedOpen ? (
+                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                  )}
+                  <div className="flex-1">
+                    <span className="font-semibold text-gray-700">Inactifs ou expirés</span>
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    {archivedLoaded ? combinedArchivedHighlights.length : expiredHighlights.length}
+                  </span>
+                </button>
+                {archivedOpen && (
+                  <div className="px-6 pb-6 space-y-4">
+                    {archivedLoading && (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#328fce] mx-auto" />
+                      </div>
+                    )}
+                    {combinedArchivedHighlights.length === 0 ? (
+                      <div className="bg-gray-50 border border-dashed border-gray-200 rounded-xl p-4 text-sm text-gray-500">
+                        Aucune information archivée
+                      </div>
+                    ) : (
+                      combinedArchivedHighlights.map((highlight) => (
+                        <ArchivedHighlightCard
                           key={highlight.id}
-                          draggable
-                          onDragStart={() => handleDragStart(globalIndex)}
-                          onDragOver={(e) => handleDragOver(e, globalIndex)}
-                          onDragLeave={handleDragLeave}
-                          onDrop={(e) => handleDrop(e, globalIndex)}
-                          onDragEnd={handleDragEnd}
-                          className={`bg-white rounded-lg shadow-md overflow-hidden border-2 transition-all border-gray-200 opacity-60 ${
-                            isDragging ? 'opacity-30 scale-95' : ''
-                          } ${
-                            isDragOver ? 'border-[#328fce] border-dashed scale-105' : ''
-                          }`}
-                        >
-                          <div className="p-4">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex items-start gap-4 flex-1">
-                                <div className="flex items-center gap-2 text-gray-400 hover:text-gray-600 cursor-move mt-1">
-                                  <GripVertical className="w-5 h-5" />
-                                </div>
-                                
-                                <div className={`w-12 h-12 rounded-lg bg-gradient-to-r ${theme?.colors} flex items-center justify-center text-white flex-shrink-0`}>
-                                  {renderIcon(highlight.icon)}
-                                </div>
-                                
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="text-lg font-semibold text-gray-800">{highlight.title}</h3>
-                                    {!highlight.is_active && (
-                                      <span className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">
-                                        Inactif
-                                      </span>
-                                    )}
-                                    {isPending && (
-                                      <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded">
-                                        Programmé
-                                      </span>
-                                    )}
-                                    {isExpired && (
-                                      <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">
-                                        Expiré
-                                      </span>
-                                    )}
-                                    {theme && (
-                                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                                        {theme.name}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-sm text-gray-600">
-                                    {highlight.link && (
-                                      <>
-                                        <p className="truncate">Lien: {highlight.link}</p>
-                                        {highlight.link_label && (
-                                          <p className="text-xs text-blue-600 mt-1">Bouton: {highlight.link_label}</p>
-                                        )}
-                                      </>
-                                    )}
-                                    {highlight.start_date && (() => {
-                                      const startDate = new Date(highlight.start_date);
-                                      const isPast = startDate <= new Date();
-                                      return (
-                                        <p className="text-xs text-green-600 mt-1">
-                                          {isPast ? 'Publié le' : 'Programmé pour le'} {startDate.toLocaleDateString('fr-FR', { 
-                                            year: 'numeric', 
-                                            month: 'long', 
-                                            day: 'numeric'
-                                          })}
-                                        </p>
-                                      );
-                                    })()}
-                                    {highlight.end_date && (() => {
-                                      const endDate = new Date(highlight.end_date);
-                                      const isPast = endDate <= new Date();
-                                      return (
-                                        <p className="text-xs text-orange-600 mt-1">
-                                          {isPast ? 'Expiré le' : 'Expirera le'} {endDate.toLocaleDateString('fr-FR', { 
-                                            year: 'numeric', 
-                                            month: 'long', 
-                                            day: 'numeric'
-                                          })}
-                                        </p>
-                                      );
-                                    })()}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => toggleActive(highlight)}
-                                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                    highlight.is_active ? 'bg-[#328fce]' : 'bg-gray-300'
-                                  }`}
-                                  title={highlight.is_active ? 'Désactiver' : 'Activer'}
-                                >
-                                  <span
-                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                      highlight.is_active ? 'translate-x-6' : 'translate-x-1'
-                                    }`}
-                                  />
-                                </button>
-                                <button
-                                  onClick={() => handleEdit(highlight)}
-                                  className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                                  title="Modifier"
-                                >
-                                  <Edit className="w-5 h-5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDuplicate(highlight)}
-                                  className="p-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
-                                  title="Dupliquer"
-                                >
-                                  <Copy className="w-5 h-5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(highlight.id)}
-                                  className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-                                  title="Supprimer"
-                                >
-                                  <Trash2 className="w-5 h-5" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                          highlight={highlight}
+                          renderIcon={renderIcon}
+                          onToggle={toggleActive}
+                          onEdit={handleEdit}
+                          onDuplicate={handleDuplicate}
+                          onDelete={handleDelete}
+                        />
+                      ))
+                    )}
                   </div>
                 )}
-              </>
-            );
-          })()}
-        </>
-      )}
+              </div>
+            </div>
+          );
+        })()}
 
-      {highlights.filter(h => h.is_active).length > 3 && (
+      {visibleActiveHighlights.length > 3 && (
         <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800">
           ⚠️ Attention: Plus de 3 informations sont actives. Seules les 3 premières seront affichées sur la page d'accueil.
         </div>
@@ -922,3 +789,270 @@ export function HighlightsManager() {
   );
 }
 
+interface SortableHighlightCardProps {
+  highlight: Highlight;
+  renderIcon: (iconName: string) => ReactNode;
+  onToggle: (highlight: Highlight) => void | Promise<void>;
+  onEdit: (highlight: Highlight) => void;
+  onDuplicate: (highlight: Highlight) => void;
+  onDelete: (id: string) => void;
+  isReordering: boolean;
+}
+
+function SortableHighlightCard({
+  highlight,
+  renderIcon,
+  onToggle,
+  onEdit,
+  onDuplicate,
+  onDelete,
+  isReordering,
+}: SortableHighlightCardProps) {
+  const theme = GRADIENT_THEMES.find((t) => t.id === highlight.gradient_theme);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: highlight.id,
+  });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : undefined,
+    boxShadow: isDragging ? '0 8px 22px rgba(50, 143, 206, 0.25)' : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-white rounded-lg shadow-md overflow-hidden border-2 border-green-200 transition-all"
+    >
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            <button
+              type="button"
+              className="flex items-center gap-2 text-gray-400 hover:text-gray-600 cursor-grab mt-1 transition-colors"
+              aria-label="Réorganiser l'information"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="w-5 h-5" />
+            </button>
+
+            <div
+              className={`w-12 h-12 rounded-lg bg-gradient-to-r ${theme?.colors} flex items-center justify-center text-white flex-shrink-0`}
+            >
+              {renderIcon(highlight.icon)}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-lg font-semibold text-gray-800 truncate">{highlight.title}</h3>
+                {theme && (
+                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                    {theme.name}
+                  </span>
+                )}
+              </div>
+              <div className="text-sm text-gray-600 space-y-1">
+                {highlight.link && (
+                  <>
+                    <p className="truncate">Lien: {highlight.link}</p>
+                    {highlight.link_label && (
+                      <p className="text-xs text-blue-600">{`Bouton: ${highlight.link_label}`}</p>
+                    )}
+                  </>
+                )}
+                {highlight.start_date && (
+                  <p className="text-xs text-green-600">
+                    {(new Date(highlight.start_date) <= new Date() ? 'Publié le ' : 'Programmé pour le ') +
+                      new Date(highlight.start_date).toLocaleDateString('fr-FR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                  </p>
+                )}
+                {highlight.end_date && (
+                  <p className="text-xs text-orange-600">
+                    {(new Date(highlight.end_date) <= new Date() ? 'Expiré le ' : 'Expirera le ') +
+                      new Date(highlight.end_date).toLocaleDateString('fr-FR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onToggle(highlight)}
+              disabled={isReordering}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                highlight.is_active ? 'bg-[#328fce]' : 'bg-gray-300'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              title={highlight.is_active ? 'Désactiver' : 'Activer'}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  highlight.is_active ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <button
+              onClick={() => onEdit(highlight)}
+              disabled={isReordering}
+              className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Modifier"
+            >
+              <Edit className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => onDuplicate(highlight)}
+              disabled={isReordering}
+              className="p-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Dupliquer"
+            >
+              <Copy className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => onDelete(highlight.id)}
+              disabled={isReordering}
+              className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Supprimer"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ArchivedHighlightCardProps {
+  highlight: Highlight;
+  renderIcon: (iconName: string) => ReactNode;
+  onToggle: (highlight: Highlight) => void | Promise<void>;
+  onEdit: (highlight: Highlight) => void;
+  onDuplicate: (highlight: Highlight) => void;
+  onDelete: (id: string) => void;
+}
+
+function ArchivedHighlightCard({
+  highlight,
+  renderIcon,
+  onToggle,
+  onEdit,
+  onDuplicate,
+  onDelete,
+}: ArchivedHighlightCardProps) {
+  const theme = GRADIENT_THEMES.find((t) => t.id === highlight.gradient_theme);
+  const now = new Date();
+  const isExpired = highlight.end_date && new Date(highlight.end_date) <= now;
+  const isPending = highlight.start_date && new Date(highlight.start_date) > now;
+
+  return (
+    <div className="opacity-60 bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            <div
+              className={`w-12 h-12 rounded-lg bg-gradient-to-r ${theme?.colors} flex items-center justify-center text-white flex-shrink-0`}
+            >
+              {renderIcon(highlight.icon)}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-lg font-semibold text-gray-800 truncate">{highlight.title}</h3>
+                {!highlight.is_active && (
+                  <span className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">Inactif</span>
+                )}
+                {isPending && (
+                  <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded">Programmé</span>
+                )}
+                {isExpired && (
+                  <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">Expiré</span>
+                )}
+                {theme && (
+                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">{theme.name}</span>
+                )}
+              </div>
+              <div className="text-sm text-gray-600 space-y-1">
+                {highlight.link && (
+                  <>
+                    <p className="truncate">Lien: {highlight.link}</p>
+                    {highlight.link_label && (
+                      <p className="text-xs text-blue-600">{`Bouton: ${highlight.link_label}`}</p>
+                    )}
+                  </>
+                )}
+                {highlight.start_date && (
+                  <p className="text-xs text-green-600">
+                    {(new Date(highlight.start_date) <= now ? 'Publié le ' : 'Programmé pour le ') +
+                      new Date(highlight.start_date).toLocaleDateString('fr-FR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                  </p>
+                )}
+                {highlight.end_date && (
+                  <p className="text-xs text-orange-600">
+                    {(new Date(highlight.end_date) <= now ? 'Expiré le ' : 'Expirera le ') +
+                      new Date(highlight.end_date).toLocaleDateString('fr-FR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onToggle(highlight)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                highlight.is_active ? 'bg-[#328fce]' : 'bg-gray-300'
+              }`}
+              title={highlight.is_active ? 'Désactiver' : 'Activer'}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  highlight.is_active ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <button
+              onClick={() => onEdit(highlight)}
+              className="p-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+              title="Modifier"
+            >
+              <Edit className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => onDuplicate(highlight)}
+              className="p-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
+              title="Dupliquer"
+            >
+              <Copy className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => onDelete(highlight.id)}
+              className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+              title="Supprimer"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

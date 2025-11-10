@@ -1,10 +1,14 @@
 import { useAuth } from '../../contexts/AuthContext';
-import { FileText, Settings, Lightbulb } from 'lucide-react';
+import { FileText, Settings, Lightbulb, Users, Sparkles } from 'lucide-react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router';
 import { PagesManager } from './PagesManager';
 import { PageEditor } from './PageEditor';
 import { SettingsManager } from './SettingsManager';
 import { HighlightsManager } from './HighlightsManager';
+import { CounselorsManager } from './CounselorsManager';
+import { CounselorEditor } from './CounselorEditor';
+import { ProjectsManager } from './ProjectsManager';
+import { ProjectEditor } from './ProjectEditor';
 
 export function AdminDashboard() {
   const { user, isAdmin } = useAuth();
@@ -23,6 +27,8 @@ export function AdminDashboard() {
 
   const isPageRoute = location.pathname.startsWith('/admin/pages');
   const isSettingsRoute = location.pathname.startsWith('/admin/settings');
+  const isCounselorsRoute = location.pathname.startsWith('/admin/anims');
+  const isProjectsRoute = location.pathname.startsWith('/admin/projects');
   const isHighlightsRoute = location.pathname.startsWith('/admin/highlights');
 
   return (
@@ -46,6 +52,28 @@ export function AdminDashboard() {
               >
                 <FileText className="w-5 h-5" />
                 Pages
+              </Link>
+              <Link
+                to="/admin/anims"
+                className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
+                  isCounselorsRoute
+                    ? 'border-b-2 border-[#328fce] text-[#328fce] bg-blue-50'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                }`}
+              >
+                <Users className="w-5 h-5" />
+                Anims
+              </Link>
+              <Link
+                to="/admin/projects"
+                className={`flex items-center gap-2 px-6 py-4 font-medium transition-colors ${
+                  isProjectsRoute
+                    ? 'border-b-2 border-[#328fce] text-[#328fce] bg-blue-50'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                }`}
+              >
+                <Sparkles className="w-5 h-5" />
+                Projets
               </Link>
               <Link
                 to="/admin/highlights"
@@ -78,6 +106,12 @@ export function AdminDashboard() {
               <Route path="pages" element={<PagesManager />} />
               <Route path="pages/new" element={<PageEditor page={null} />} />
               <Route path="pages/:id/edit" element={<PageEditor />} />
+              <Route path="anims" element={<CounselorsManager />} />
+              <Route path="anims/new" element={<CounselorEditor />} />
+              <Route path="anims/:id/edit" element={<CounselorEditor />} />
+              <Route path="projects" element={<ProjectsManager />} />
+              <Route path="projects/new" element={<ProjectEditor />} />
+              <Route path="projects/:id/edit" element={<ProjectEditor />} />
               <Route path="highlights" element={<HighlightsManager />} />
               <Route path="settings" element={<SettingsManager />} />
             </Routes>

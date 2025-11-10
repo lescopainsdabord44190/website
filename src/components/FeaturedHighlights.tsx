@@ -19,7 +19,11 @@ const GRADIENT_THEMES: Record<string, string> = {
 };
 
 export function FeaturedHighlights() {
-  const { highlights, loading } = useHighlights(true);
+  const { highlights, loading } = useHighlights({
+    status: 'active',
+    includeScheduleWindow: true,
+    activeLimit: 3,
+  });
   const { trackEvent } = useTracking();
 
   const renderIcon = (iconName: string) => {

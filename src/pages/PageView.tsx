@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { useLocation, Link as RouterLink, useNavigate, Navigate } from 'react-router';
-import { usePageBySlug, usePages, buildFullPath } from '../hooks/usePages';
+import { usePageBySlug, usePages, buildFullPath, triggerPagesRefetch } from '../hooks/usePages';
 import { Link } from '../components/Link';
-import { Home, ChevronRight, Edit } from 'lucide-react';
+import { Home, ChevronRight, Edit, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { migrateOldContentToEditorJS } from '../lib/contentMigration';
 import { useAuth } from '../contexts/AuthContext';
 import { EditorJSRenderer } from '../components/EditorJSRenderer';
+import { supabase } from '../lib/supabase';
 
 interface TocItem {
   id: string;
@@ -25,12 +26,14 @@ export function PageView() {
   const location = useLocation();
   const navigate = useNavigate();
   const slug = location.pathname;
-  const { page, loading } = usePageBySlug(slug);
-  const { pages } = usePages();
-  const { isAdmin } = useAuth();
+  const { page, loading, refetch: refetchPage } = usePageBySlug(slug);
+  const { pages, refetch: refetchPages } = usePages();
+  const { isAdmin, user } = useAuth();
   const [toc, setToc] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
   const contentRef = useRef<HTMLDivElement>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!page || !page.content) return;
@@ -138,8 +141,72 @@ export function PageView() {
     }
   };
 
+  const showInactiveBanner = Boolean(user) && !page.is_active;
+
+  const handlePublish = async () => {
+    if (publishing) return;
+    setPublishing(true);
+    try {
+      const { error } = await supabase
+        .from('pages')
+        .update({ is_active: true, updated_at: new Date().toISOString() })
+        .eq('id', page.id);
+
+      if (error) throw error;
+
+      setToastMessage('La page a été publiée avec succès.');
+      await Promise.all([refetchPage(), refetchPages()]);
+      triggerPagesRefetch();
+    } catch (err) {
+      console.error('Error publishing page:', err);
+      setToastMessage("Impossible de publier cette page, merci de réessayer.");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   return (
     <div className="bg-gradient-to-br from-[#FEF5F0] to-white pb-12">
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <div className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg">
+            <CheckCircle2 className="w-5 h-5" />
+            <span>{toastMessage}</span>
+            <button
+              type="button"
+              className="ml-3 text-white/80 hover:text-white"
+              onClick={() => setToastMessage(null)}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showInactiveBanner && (
+        <div className="container mx-auto px-4 pt-6">
+          <div className="max-w-6xl mx-auto bg-orange-50 border border-orange-200 text-orange-800 rounded-2xl px-4 py-4 md:px-6 md:py-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 mt-1 text-orange-500 flex-shrink-0" />
+              <div>
+                <p className="font-semibold">Cette page n’est pas publiée.</p>
+                <p className="text-sm text-orange-700">
+                  Vous seul·e pouvez consulter cette page pour le moment. Activez-la depuis l’administration pour l’afficher aux visiteurs.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handlePublish}
+              disabled={publishing}
+              className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 transition-colors disabled:opacity-60"
+            >
+              {publishing ? 'Publication...' : 'Publier cette page'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {page.image_url && (
         <div className="relative h-64 md:h-96 overflow-hidden">
           <img

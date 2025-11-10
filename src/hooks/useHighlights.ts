@@ -20,44 +20,85 @@ export interface Highlight {
   updated_by: string | null;
 }
 
-export function useHighlights(activeOnly: boolean = false) {
+interface UseHighlightsOptions {
+  status?: 'all' | 'active';
+  includeScheduleWindow?: boolean;
+  activeLimit?: number | null;
+}
+
+const normalizeHighlight = (highlight: any): Highlight => ({
+  ...highlight,
+  content: typeof highlight.content === 'string' ? JSON.parse(highlight.content) : highlight.content,
+});
+
+export function useHighlights(options: UseHighlightsOptions = {}) {
+  const {
+    status = 'all',
+    includeScheduleWindow = false,
+    activeLimit = null,
+  } = options;
+
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchHighlights();
-  }, [activeOnly]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, includeScheduleWindow, activeLimit]);
 
   const fetchHighlights = async () => {
     try {
+      setLoading(true);
+
       let query = supabase
         .from('featured_highlights')
         .select('*')
         .order('order_index', { ascending: true });
 
-      if (activeOnly) {
-        const now = new Date().toISOString();
-        query = query
-          .eq('is_active', true)
-          .or('start_date.is.null,start_date.lte.' + now)
-          .or('end_date.is.null,end_date.gt.' + now)
-          .limit(3);
+      if (status === 'active') {
+        query = query.eq('is_active', true);
+
+        if (includeScheduleWindow) {
+          const now = new Date().toISOString();
+          query = query
+            .or('start_date.is.null,start_date.lte.' + now)
+            .or('end_date.is.null,end_date.gt.' + now);
+        }
+
+        if (activeLimit !== null) {
+          query = query.limit(activeLimit);
+        }
       }
 
       const { data, error } = await query;
 
       if (error) throw error;
 
-      const parsedHighlights = (data || []).map((h) => ({
-        ...h,
-        content: typeof h.content === 'string' ? JSON.parse(h.content) : h.content,
-      }));
-
-      setHighlights(parsedHighlights);
+      setHighlights((data || []).map(normalizeHighlight));
     } catch (error) {
       console.error('Error fetching highlights:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchHighlightsByStatus = async (isActive: boolean) => {
+    try {
+      const { data, error } = await supabase
+        .from('featured_highlights')
+        .select('*')
+        .eq('is_active', isActive)
+        .order('order_index', { ascending: true });
+
+      if (error) throw error;
+
+      return {
+        success: true as const,
+        data: (data || []).map(normalizeHighlight),
+      };
+    } catch (error) {
+      console.error('Error fetching highlights by status:', error);
+      return { success: false as const, error };
     }
   };
 
@@ -159,6 +200,7 @@ export function useHighlights(activeOnly: boolean = false) {
     deleteHighlight,
     reorderHighlights,
     refetch: fetchHighlights,
+    fetchHighlightsByStatus,
   };
 }
 

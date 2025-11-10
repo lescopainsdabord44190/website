@@ -8,12 +8,12 @@ import { HomePage } from './pages/HomePage';
 import { ContactPage } from './pages/ContactPage';
 import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 import { PageView } from './pages/PageView';
+import { ProjectPage } from './pages/ProjectPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { NotFoundPage } from './pages/NotFoundPage';
-import { ServerErrorPage } from './pages/ServerErrorPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { SpeedInsights } from "@vercel/speed-insights/react"
 
@@ -80,6 +80,7 @@ function Layout() {
           <Route path="/" element={<HomePage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/politique-de-confidentialite" element={<PrivacyPolicyPage />} />
+          <Route path="/projets/:slug" element={<ProjectPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />

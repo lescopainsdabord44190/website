@@ -11,6 +11,8 @@ import Checklist from '@editorjs/checklist';
 import Paragraph from '@editorjs/paragraph';
 import { supabase } from '../lib/supabase';
 import { Alert } from '../lib/editorjs-alert';
+import { AnimListTool } from '../lib/editorjs-anim-list';
+import { CarouselTool } from '../lib/editorjs-carousel';
 
 interface RichTextEditorProps {
   value: OutputData | null;
@@ -159,6 +161,12 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
           checklist: {
             class: Checklist,
             inlineToolbar: true,
+          },
+          'anim-list': {
+            class: AnimListTool,
+          },
+          carousel: {
+            class: CarouselTool,
           },
         },
         onChange: handleChange,
