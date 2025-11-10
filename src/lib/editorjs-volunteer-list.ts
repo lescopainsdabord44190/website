@@ -1,11 +1,11 @@
 import type { BlockTool, API } from '@editorjs/editorjs';
 import { supabase } from './supabase';
 
-interface AnimListData {
-  counselorSlugs: string[];
+interface VolunteerListData {
+  volunteerSlugs: string[];
 }
 
-interface CounselorRecord {
+interface VolunteerRecord {
   slug: string;
   first_name: string;
   last_name: string | null;
@@ -14,33 +14,33 @@ interface CounselorRecord {
   is_active: boolean;
 }
 
-interface AnimListConstructorArgs {
-  data?: AnimListData;
+interface VolunteerListConstructorArgs {
+  data?: VolunteerListData;
   api: API;
   readOnly?: boolean;
 }
 
-export class AnimListTool implements BlockTool {
-  private data: AnimListData;
+export class VolunteerListTool implements BlockTool {
+  private data: VolunteerListData;
   private wrapper: HTMLElement;
   private readOnly: boolean;
-  private cachedCounselors: CounselorRecord[] = [];
+  private cachedVolunteers: VolunteerRecord[] = [];
   private dragSourceIndex: number | null = null;
 
-  constructor({ data, api, readOnly }: AnimListConstructorArgs) {
+  constructor({ data, api, readOnly }: VolunteerListConstructorArgs) {
     this.data = {
-      counselorSlugs: data?.counselorSlugs ?? [],
+      volunteerSlugs: data?.volunteerSlugs ?? [],
     };
     void api;
     this.readOnly = Boolean(readOnly);
     this.wrapper = document.createElement('div');
-    this.wrapper.classList.add('editorjs-anim-list');
+    this.wrapper.classList.add('editorjs-volunteer-list');
   }
 
   static get toolbox() {
     return {
-      title: 'Liste des anims',
-      icon: '<svg width="18" height="18" viewBox="0 0 18 18"><path d="M12 11a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm-6-7a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zm7.5-.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM6 12c2.32 0 4.2 1.42 4.2 3.17V16H1.8v-.83C1.8 13.42 3.68 12 6 12zm6 1c-.3 0-.58.03-.85.07a4.17 4.17 0 0 1 1.13 2.93H16.8v-.83C16.8 13.42 14.92 12 12 12z" fill="currentColor"/></svg>',
+      title: 'Liste des bénévoles',
+      icon: '<svg width="18" height="18" viewBox="0 0 18 18"><path d="M6 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm6 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM6 10c2.5 0 4.5 1.5 4.5 3.33V15H1.5v-1.67C1.5 11.5 3.5 10 6 10zm6 0c.39 0 .75.04 1.09.11A4.13 4.13 0 0 1 16.5 14v1h-4.5v-1.67c0-.74-.25-1.43-.68-2.05.55-.18 1.16-.28 1.68-.28z" fill="currentColor"/></svg>',
     };
   }
 
@@ -54,7 +54,7 @@ export class AnimListTool implements BlockTool {
     }
 
     this.renderLoading();
-    void this.loadCounselors();
+    void this.loadVolunteers();
     return this.wrapper;
   }
 
@@ -62,24 +62,24 @@ export class AnimListTool implements BlockTool {
     this.wrapper.innerHTML = '';
     const container = document.createElement('div');
     container.className = 'border border-gray-200 rounded-xl p-4 bg-white text-sm text-gray-500';
-    container.textContent = `${this.data.counselorSlugs.length} animateur·rices sélectionné·es.`;
+    container.textContent = `${this.data.volunteerSlugs.length} bénévoles sélectionné·es.`;
     this.wrapper.appendChild(container);
     return this.wrapper;
   }
 
-  private async loadCounselors() {
+  private async loadVolunteers() {
     try {
       const { data, error } = await supabase
-        .from('counselors')
+        .from('volunteers')
         .select('slug, first_name, last_name, role_title, photo_url, is_active')
         .order('first_name', { ascending: true });
 
       if (error) throw error;
 
-      this.cachedCounselors = data ?? [];
+      this.cachedVolunteers = data ?? [];
       this.renderList();
     } catch (error) {
-      console.error('Error loading counselors for EditorJS:', error);
+      console.error('Error loading volunteers for EditorJS:', error);
       this.renderError();
     }
   }
@@ -87,7 +87,7 @@ export class AnimListTool implements BlockTool {
   private renderList() {
     this.wrapper.innerHTML = '';
 
-    if (this.cachedCounselors.length === 0) {
+    if (this.cachedVolunteers.length === 0) {
       this.renderEmpty();
       return;
     }
@@ -97,42 +97,40 @@ export class AnimListTool implements BlockTool {
 
     const info = document.createElement('p');
     info.className = 'text-xs text-gray-500';
-    info.textContent =
-      'Cochez les animateur·rices à afficher et glissez-déposez pour définir leur ordre.';
+    info.textContent = 'Cochez les bénévoles à afficher et glissez-déposez pour définir leur ordre.';
     container.appendChild(info);
 
     const list = document.createElement('div');
     list.className = 'space-y-2';
 
-    const orderedCounselors = this.getOrderedCounselors();
-
-    orderedCounselors.forEach(({ counselor, selectedIndex }) => {
-      list.appendChild(this.createListItem(counselor, selectedIndex));
+    const orderedVolunteers = this.getOrderedVolunteers();
+    orderedVolunteers.forEach(({ volunteer, selectedIndex }) => {
+      list.appendChild(this.createListItem(volunteer, selectedIndex));
     });
 
     container.appendChild(list);
     this.wrapper.appendChild(container);
   }
 
-  private getOrderedCounselors() {
-    const selectedSet = new Set(this.data.counselorSlugs);
-    const selected: Array<{ counselor: CounselorRecord; selectedIndex: number }> = [];
+  private getOrderedVolunteers() {
+    const selectedSet = new Set(this.data.volunteerSlugs);
+    const selected: Array<{ volunteer: VolunteerRecord; selectedIndex: number }> = [];
 
-    this.data.counselorSlugs.forEach((slug, index) => {
-      const counselor = this.cachedCounselors.find((item) => item.slug === slug);
-      if (counselor) {
-        selected.push({ counselor, selectedIndex: index });
+    this.data.volunteerSlugs.forEach((slug, index) => {
+      const volunteer = this.cachedVolunteers.find((item) => item.slug === slug);
+      if (volunteer) {
+        selected.push({ volunteer, selectedIndex: index });
       }
     });
 
-    const remaining = this.cachedCounselors
+    const remaining = this.cachedVolunteers
       .filter((item) => !selectedSet.has(item.slug))
       .sort((a, b) => a.first_name.localeCompare(b.first_name));
 
-    return selected.concat(remaining.map((counselor) => ({ counselor, selectedIndex: -1 })));
+    return selected.concat(remaining.map((volunteer) => ({ volunteer, selectedIndex: -1 })));
   }
 
-  private createListItem(counselor: CounselorRecord, selectedIndex: number) {
+  private createListItem(volunteer: VolunteerRecord, selectedIndex: number) {
     const isSelected = selectedIndex >= 0;
 
     const card = document.createElement('div');
@@ -141,7 +139,7 @@ export class AnimListTool implements BlockTool {
         ? 'border-[#328fce]/60 bg-blue-50/80 cursor-grab'
         : 'border-gray-200 bg-white hover:border-[#328fce]/60'
     }`;
-    card.dataset.slug = counselor.slug;
+    card.dataset.slug = volunteer.slug;
     card.dataset.selectedIndex = isSelected ? selectedIndex.toString() : '';
 
     if (isSelected) {
@@ -158,36 +156,36 @@ export class AnimListTool implements BlockTool {
     checkbox.checked = isSelected;
     checkbox.className = 'w-4 h-4 text-[#328fce] border-gray-300 rounded focus:ring-[#328fce]';
     checkbox.addEventListener('change', () => {
-      this.toggleSlug(counselor.slug, checkbox.checked);
+      this.toggleSlug(volunteer.slug, checkbox.checked);
     });
     card.appendChild(checkbox);
 
     const content = document.createElement('div');
     content.className = 'flex items-center gap-3 flex-1';
 
-    content.appendChild(this.createAvatar(counselor.photo_url, counselor.first_name, counselor.last_name));
+    content.appendChild(this.createAvatar(volunteer.photo_url, volunteer.first_name, volunteer.last_name));
 
     const textContainer = document.createElement('div');
     textContainer.className = 'flex flex-col';
 
     const name = document.createElement('span');
     name.className = 'text-sm font-medium text-gray-800';
-    name.textContent = `${counselor.first_name} ${counselor.last_name ?? ''}`;
+    name.textContent = `${volunteer.first_name} ${volunteer.last_name ?? ''}`;
     textContainer.appendChild(name);
 
-    if (counselor.role_title) {
+    if (volunteer.role_title) {
       const role = document.createElement('span');
       role.className = 'text-xs text-[#328fce]';
-      role.textContent = counselor.role_title;
+      role.textContent = volunteer.role_title;
       textContainer.appendChild(role);
     }
 
     const slugInfo = document.createElement('span');
     slugInfo.className = 'text-xs text-gray-500';
-    slugInfo.textContent = counselor.slug;
+    slugInfo.textContent = volunteer.slug;
     textContainer.appendChild(slugInfo);
 
-    if (!counselor.is_active) {
+    if (!volunteer.is_active) {
       const badge = document.createElement('span');
       badge.className = 'inline-block mt-1 text-[11px] px-2 py-0.5 bg-gray-200 text-gray-600 rounded-full';
       badge.textContent = 'Inactif·ve';
@@ -211,7 +209,7 @@ export class AnimListTool implements BlockTool {
     this.wrapper.innerHTML = '';
     const loading = document.createElement('div');
     loading.className = 'border-2 border-dashed border-gray-200 rounded-xl p-4 bg-gray-50 text-sm text-gray-500';
-    loading.textContent = 'Chargement des animateur·rices...';
+    loading.textContent = 'Chargement des bénévoles...';
     this.wrapper.appendChild(loading);
   }
 
@@ -219,7 +217,7 @@ export class AnimListTool implements BlockTool {
     this.wrapper.innerHTML = '';
     const error = document.createElement('div');
     error.className = 'border border-red-200 bg-red-50 text-red-700 rounded-xl p-4 text-sm';
-    error.textContent = 'Impossible de charger la liste des animateur·rices. Veuillez réessayer.';
+    error.textContent = 'Impossible de charger la liste des bénévoles. Veuillez réessayer.';
     this.wrapper.appendChild(error);
   }
 
@@ -227,17 +225,17 @@ export class AnimListTool implements BlockTool {
     this.wrapper.innerHTML = '';
     const empty = document.createElement('div');
     empty.className = 'border border-yellow-200 bg-yellow-50 text-yellow-700 rounded-xl p-4 text-sm';
-    empty.textContent = 'Aucun animateur·rice disponible pour le moment.';
+    empty.textContent = 'Aucun·e bénévole disponible pour le moment.';
     this.wrapper.appendChild(empty);
   }
 
   private toggleSlug(slug: string, selected: boolean) {
     if (selected) {
-      if (!this.data.counselorSlugs.includes(slug)) {
-        this.data.counselorSlugs.push(slug);
+      if (!this.data.volunteerSlugs.includes(slug)) {
+        this.data.volunteerSlugs.push(slug);
       }
     } else {
-      this.data.counselorSlugs = this.data.counselorSlugs.filter((item) => item !== slug);
+      this.data.volunteerSlugs = this.data.volunteerSlugs.filter((item) => item !== slug);
     }
 
     this.renderList();
@@ -292,10 +290,10 @@ export class AnimListTool implements BlockTool {
       return;
     }
 
-    const slugs = [...this.data.counselorSlugs];
+    const slugs = [...this.data.volunteerSlugs];
     const [moved] = slugs.splice(sourceIndex, 1);
     slugs.splice(targetIndex, 0, moved);
-    this.data.counselorSlugs = slugs;
+    this.data.volunteerSlugs = slugs;
 
     this.renderList();
   };
@@ -328,9 +326,9 @@ export class AnimListTool implements BlockTool {
     return wrapper;
   }
 
-  save(): AnimListData {
+  save(): VolunteerListData {
     return {
-      counselorSlugs: this.data.counselorSlugs,
+      volunteerSlugs: this.data.volunteerSlugs,
     };
   }
 }

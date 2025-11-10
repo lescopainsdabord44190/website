@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Link } from './Link';
 
 export function UserMenu() {
-  const { user, isAdmin, signOut, avatarUrl } = useAuth();
+  const { user, isAdmin, isEditor, signOut, avatarUrl } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -21,12 +21,35 @@ export function UserMenu() {
 
   if (!user) return null;
 
-  const getInitials = (email: string) => {
-    const parts = email.split('@')[0].split('.');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
+  const getInitials = () => {
+    const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const firstName =
+      typeof metadata.first_name === 'string' ? (metadata.first_name as string) : '';
+    const lastName =
+      typeof metadata.last_name === 'string' ? (metadata.last_name as string) : '';
+
+    const initials = `${firstName?.[0] ?? ''}${lastName?.[0] ?? ''}`.trim().toUpperCase();
+
+    if (initials) {
+      return initials;
     }
-    return email.substring(0, 2).toUpperCase();
+
+    const email = user.email ?? '';
+    if (!email) {
+      return '?';
+    }
+
+    const emailParts = email.split('@')[0];
+    if (!emailParts) {
+      return email.substring(0, 2).toUpperCase();
+    }
+
+    const segments = emailParts.split('.');
+    if (segments.length >= 2) {
+      return `${segments[0]?.[0] ?? ''}${segments[1]?.[0] ?? ''}`.toUpperCase() || email.substring(0, 2).toUpperCase();
+    }
+
+    return emailParts.substring(0, 2).toUpperCase();
   };
 
   return (
@@ -43,7 +66,7 @@ export function UserMenu() {
           />
         ) : (
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#328fce] to-[#84c19e] flex items-center justify-center text-white font-semibold shadow-md">
-            {getInitials(user.email || '')}
+            {getInitials()}
           </div>
         )}
         <ChevronDown
@@ -67,7 +90,7 @@ export function UserMenu() {
             <span className="font-medium">Mon Profil</span>
           </Link>
 
-          {isAdmin && (
+          {(isAdmin || isEditor) && (
             <Link
               href="/admin"
               className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"

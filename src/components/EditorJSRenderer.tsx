@@ -26,6 +26,7 @@ interface EditorBlock {
     message?: string;
     type?: 'info' | 'success' | 'warning' | 'danger';
     counselorSlugs?: string[];
+    volunteerSlugs?: string[];
     images?: { url: string; caption?: string; alt?: string }[];
     autoplay?: boolean;
   };
@@ -254,6 +255,11 @@ export function EditorJSRenderer({ content, className = '', enableToc = false }:
           return <AnimListBlock key={index} slugs={slugs} />;
         }
 
+        if (block.type === 'volunteer-list') {
+          const slugs = Array.isArray(block.data.volunteerSlugs) ? block.data.volunteerSlugs : [];
+          return <VolunteerListBlock key={index} slugs={slugs} />;
+        }
+
         if (block.type === 'carousel') {
           const images = Array.isArray(block.data.images) ? block.data.images : [];
           const autoplay = Boolean(block.data.autoplay);
@@ -379,6 +385,10 @@ function AnimListBlock({ slugs }: { slugs: string[] }) {
               })),
           } as CounselorPreview;
         });
+
+        parsed.sort(
+          (a, b) => normalizedSlugs.indexOf(a.slug) - normalizedSlugs.indexOf(b.slug)
+        );
 
         setCounselors(parsed);
       } catch (err) {
@@ -517,6 +527,274 @@ function AnimListBlock({ slugs }: { slugs: string[] }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+type VolunteerRow = Database['public']['Tables']['volunteers']['Row'];
+type CommissionRow = Database['public']['Tables']['commissions']['Row'];
+
+type VolunteerWithCommissionsRow = VolunteerRow & {
+  commission_volunteers?: Array<{
+    commission: CommissionRow | null;
+  }>;
+};
+
+interface VolunteerCommissionPreview {
+  id: string;
+  slug: string;
+  title: string;
+  is_active: boolean;
+}
+
+interface VolunteerPreview {
+  slug: string;
+  first_name: string;
+  last_name: string | null;
+  role_title: string | null;
+  bio: string | null;
+  photo_url: string | null;
+  is_executive_member: boolean;
+  is_board_member: boolean;
+  mandate_start_date: string | null;
+  is_active: boolean;
+  commissions: VolunteerCommissionPreview[];
+}
+
+function formatMandateDate(value: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toLocaleDateString('fr-FR', {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function VolunteerListBlock({ slugs }: { slugs: string[] }) {
+  const normalizedSlugs = useMemo(() => Array.from(new Set(slugs)).filter(Boolean), [slugs]);
+  const [volunteers, setVolunteers] = useState<VolunteerPreview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchVolunteers = async () => {
+      if (normalizedSlugs.length === 0) {
+        if (isMounted) {
+          setVolunteers([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('volunteers')
+          .select(`
+            slug,
+            first_name,
+            last_name,
+            role_title,
+            bio,
+            photo_url,
+            is_executive_member,
+            is_board_member,
+            mandate_start_date,
+            is_active,
+            commission_volunteers (
+              commission:commissions (
+                id,
+                slug,
+                title,
+                is_active
+              )
+            )
+          `)
+          .in('slug', normalizedSlugs)
+          .order('first_name', { ascending: true });
+
+        if (fetchError) throw fetchError;
+        if (!isMounted) return;
+
+        const rows = (data || []) as unknown as VolunteerWithCommissionsRow[];
+
+        const parsed = rows.map((item) => {
+          const commissionLinks = Array.isArray(item.commission_volunteers) ? item.commission_volunteers : [];
+          return {
+            slug: item.slug,
+            first_name: item.first_name,
+            last_name: item.last_name,
+            role_title: item.role_title,
+            bio: item.bio,
+            photo_url: item.photo_url,
+            is_executive_member: Boolean(item.is_executive_member),
+            is_board_member: Boolean(item.is_board_member),
+            mandate_start_date: item.mandate_start_date,
+            is_active: item.is_active,
+            commissions: commissionLinks
+              .map((link) => link.commission)
+              .filter((commission): commission is CommissionRow => Boolean(commission))
+              .map((commission) => ({
+                id: commission.id,
+                slug: commission.slug,
+                title: commission.title,
+                is_active: commission.is_active,
+              })),
+          } as VolunteerPreview;
+        });
+
+        parsed.sort(
+          (a, b) => normalizedSlugs.indexOf(a.slug) - normalizedSlugs.indexOf(b.slug)
+        );
+
+        setVolunteers(parsed);
+      } catch (err) {
+        console.error('Error fetching volunteers for rendering:', err);
+        if (isMounted) {
+          setError('Impossible de charger les profils des bénévoles pour le moment.');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchVolunteers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [normalizedSlugs]);
+
+  if (loading) {
+    return (
+      <div className="border border-gray-200 rounded-2xl p-6 bg-white shadow-sm">
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+          <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="border border-red-200 bg-red-50 text-red-700 rounded-2xl p-4 text-sm">
+        {error}
+      </div>
+    );
+  }
+
+  if (volunteers.length === 0) {
+    return (
+      <div className="border border-gray-200 bg-white rounded-2xl p-6 text-gray-600 text-sm">
+        Aucun profil bénévole à afficher pour le moment.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {volunteers.map((volunteer) => {
+        const mandateDate = formatMandateDate(volunteer.mandate_start_date);
+        const activeCommissions = volunteer.commissions.filter((commission) => commission.is_active);
+        const inactiveCommissions = volunteer.commissions.filter((commission) => !commission.is_active);
+
+        return (
+          <div
+            key={volunteer.slug}
+            className="border border-gray-200 rounded-2xl p-6 shadow-sm bg-white"
+          >
+            <div className="flex flex-col md:flex-row gap-6">
+              {volunteer.photo_url ? (
+                <img
+                  src={volunteer.photo_url}
+                  alt={`${volunteer.first_name} ${volunteer.last_name || ''}`}
+                  className="w-full md:w-44 h-44 object-cover rounded-2xl shadow-md"
+                />
+              ) : (
+                <div className="w-full md:w-44 h-44 rounded-2xl bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
+                  Photo à venir
+                </div>
+              )}
+
+              <div className="flex-1 space-y-3">
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-2xl font-semibold text-gray-800">
+                      {volunteer.first_name} {volunteer.last_name || ''}
+                    </h3>
+                    {!volunteer.is_active && (
+                      <span className="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded-full">
+                        Inactif·ve
+                      </span>
+                    )}
+                    {volunteer.is_executive_member && (
+                      <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+                        Bureau
+                      </span>
+                    )}
+                    {volunteer.is_board_member && (
+                      <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full">
+                        Conseil d’administration
+                      </span>
+                    )}
+                  </div>
+                  {volunteer.role_title && (
+                    <p className="text-[#328fce] font-medium">{volunteer.role_title}</p>
+                  )}
+                  {mandateDate && (
+                    <p className="text-xs text-gray-500">
+                      En mandat depuis {mandateDate}
+                    </p>
+                  )}
+                </div>
+
+                {volunteer.bio && (
+                  <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                    {volunteer.bio}
+                  </p>
+                )}
+
+                {volunteer.commissions.length > 0 && (
+                  <div className="border-t border-gray-100 pt-4 space-y-2">
+                    <p className="text-sm font-semibold text-gray-700">
+                      Commissions associées
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {activeCommissions.map((commission) => (
+                        <span
+                          key={commission.id}
+                          className="text-xs bg-green-50 text-green-700 px-2.5 py-1 rounded-full"
+                        >
+                          {commission.title}
+                        </span>
+                      ))}
+                      {inactiveCommissions.map((commission) => (
+                        <span
+                          key={commission.id}
+                          className="text-xs bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full"
+                        >
+                          {commission.title} (inactif)
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

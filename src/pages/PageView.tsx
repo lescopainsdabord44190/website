@@ -28,7 +28,8 @@ export function PageView() {
   const slug = location.pathname;
   const { page, loading, refetch: refetchPage } = usePageBySlug(slug);
   const { pages, refetch: refetchPages } = usePages();
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, isEditor } = useAuth();
+  const canManagePages = isAdmin || isEditor;
   const [toc, setToc] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
   const contentRef = useRef<HTMLDivElement>(null);
@@ -141,10 +142,10 @@ export function PageView() {
     }
   };
 
-  const showInactiveBanner = Boolean(user) && !page.is_active;
+  const showInactiveBanner = canManagePages && !page.is_active;
 
   const handlePublish = async () => {
-    if (publishing) return;
+    if (publishing || !canManagePages) return;
     setPublishing(true);
     try {
       const { error } = await supabase
@@ -273,7 +274,7 @@ export function PageView() {
               </nav>
             </div>
             
-            {isAdmin && (
+            {canManagePages && (
               <RouterLink
                 to={`/admin/pages/${page.id}/edit`}
                 className="flex items-center gap-2 px-4 py-2 bg-[#328fce] text-white rounded-lg hover:bg-[#84c19e] transition-colors text-sm shadow-md flex-shrink-0"

@@ -79,7 +79,7 @@ export function usePages() {
 }
 
 export function usePageBySlug(fullSlug: string) {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, isEditor, user } = useAuth();
   const [page, setPage] = useState<Page | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -92,7 +92,7 @@ export function usePageBySlug(fullSlug: string) {
 
       let query = supabase.from('pages').select('*');
 
-      if (!isAdmin) {
+      if (!isAdmin && !isEditor) {
         query = query.eq('is_active', true);
       }
 
@@ -121,7 +121,7 @@ export function usePageBySlug(fullSlug: string) {
     } finally {
       setLoading(false);
     }
-  }, [fullSlug, isAdmin]);
+  }, [fullSlug, isAdmin, isEditor]);
 
   useEffect(() => {
     setLoading(true);

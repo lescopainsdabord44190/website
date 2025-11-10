@@ -36,7 +36,7 @@ function AuthenticatedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, isEditor, loading } = useAuth();
 
   if (loading) {
     return (
@@ -46,7 +46,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user || !isAdmin) {
+  if (!user || (!isAdmin && !isEditor)) {
     return <Navigate to="/login" replace />;
   }
 

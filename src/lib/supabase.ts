@@ -260,6 +260,143 @@ export interface Database {
           role?: string | null;
         };
       };
+      profiles: {
+        Row: {
+          id: string;
+          avatar_url: string | null;
+          created_at: string;
+          updated_at: string;
+          email: string | null;
+          first_name: string | null;
+          last_name: string | null;
+          is_active: boolean;
+        };
+        Insert: {
+          id: string;
+          avatar_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          email?: string | null;
+          first_name?: string | null;
+          last_name?: string | null;
+          is_active?: boolean;
+        };
+        Update: {
+          id?: string;
+          avatar_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          email?: string | null;
+          first_name?: string | null;
+          last_name?: string | null;
+          is_active?: boolean;
+        };
+      };
+      volunteers: {
+        Row: {
+          id: string;
+          slug: string;
+          first_name: string;
+          last_name: string | null;
+          role_title: string | null;
+          bio: string | null;
+          photo_url: string | null;
+          is_executive_member: boolean;
+          is_board_member: boolean;
+          mandate_start_date: string | null;
+          order_index: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          first_name: string;
+          last_name?: string | null;
+          role_title?: string | null;
+          bio?: string | null;
+          photo_url?: string | null;
+          is_executive_member?: boolean;
+          is_board_member?: boolean;
+          mandate_start_date?: string | null;
+          order_index?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          slug?: string;
+          first_name?: string;
+          last_name?: string | null;
+          role_title?: string | null;
+          bio?: string | null;
+          photo_url?: string | null;
+          is_executive_member?: boolean;
+          is_board_member?: boolean;
+          mandate_start_date?: string | null;
+          order_index?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      commissions: {
+        Row: {
+          id: string;
+          slug: string;
+          title: string;
+          description: string | null;
+          order_index: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          title: string;
+          description?: string | null;
+          order_index?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          slug?: string;
+          title?: string;
+          description?: string | null;
+          order_index?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      commission_volunteers: {
+        Row: {
+          commission_id: string;
+          volunteer_id: string;
+          role: string | null;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          commission_id: string;
+          volunteer_id: string;
+          role?: string | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          commission_id?: string;
+          volunteer_id?: string;
+          role?: string | null;
+          notes?: string | null;
+          created_at?: string;
+        };
+      };
     };
   };
 }

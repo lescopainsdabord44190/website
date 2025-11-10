@@ -1,8 +1,18 @@
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Plus, Edit, Trash2, Sparkles, ToggleLeft, ToggleRight, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Sparkles,
+  ToggleLeft,
+  ToggleRight,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react';
 import { useProjects, type Project } from '../../hooks/useProjects';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
+import { ActionSplitButton } from '../../components/ActionSplitButton';
 
 export function ProjectsManager() {
   const navigate = useNavigate();
@@ -89,133 +99,17 @@ export function ProjectsManager() {
           <p>Aucun projet enregistré pour l’instant.</p>
         </div>
       ) : (
-        (() => {
-          const activeProjects = projects;
-
-          const renderProjectCard = (project: Project) => {
-            const activeCounselors = project.counselors.filter(
-              (link) => link.counselor && link.counselor.is_active
-            );
-
-            return (
-              <div
-                key={project.id}
-                className="bg-white rounded-2xl shadow-lg p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h3 className="text-xl font-semibold text-gray-800">{project.title}</h3>
-                    <span className="text-sm text-gray-500">/{project.slug}</span>
-                    <span
-                      className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                        project.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-300 text-gray-600'
-                      }`}
-                    >
-                      {project.is_active ? 'Actif' : 'Archivé'}
-                    </span>
-                  </div>
-                  {project.subtitle && <p className="text-[#328fce] mt-1">{project.subtitle}</p>}
-                  {project.short_description && (
-                    <p className="text-gray-600 mt-2">{project.short_description}</p>
-                  )}
-                  {activeCounselors.length > 0 && (
-                    <div className="mt-3">
-                      <p className="text-sm font-medium text-gray-700 mb-1">Animateur·rices référent·es :</p>
-                      <div className="flex flex-wrap gap-2">
-                        {activeCounselors.map((link) => (
-                          <span
-                            key={link.counselor?.id}
-                            className="inline-flex items-center gap-1 px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm"
-                          >
-                            {link.counselor?.first_name} {link.counselor?.last_name || ''}
-                            {link.role && <span className="text-xs text-purple-500">({link.role})</span>}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-3 self-start md:self-auto">
-                  <button
-                    onClick={() => handleToggleActive(project)}
-                    className="flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    {project.is_active ? <ToggleLeft className="w-4 h-4" /> : <ToggleRight className="w-4 h-4" />}
-                    <span className="text-sm font-medium">{project.is_active ? 'Archiver' : 'Activer'}</span>
-                  </button>
-                  <button
-                    onClick={() => navigate(`/admin/projects/${project.id}/edit`)}
-                    className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
-                  >
-                    <Edit className="w-4 h-4" />
-                    <span className="text-sm font-medium">Modifier</span>
-                  </button>
-                  <button
-                    onClick={() => handleDelete(project)}
-                    className="flex items-center gap-2 px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span className="text-sm font-medium">Supprimer</span>
-                  </button>
-                </div>
-              </div>
-            );
-          };
-
-          return (
-            <div className="space-y-8">
-              {activeProjects.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-semibold text-green-700">Projets actifs</h3>
-                    <span className="text-sm text-gray-600">({activeProjects.length})</span>
-                  </div>
-                  <div className="space-y-4">{activeProjects.map(renderProjectCard)}</div>
-                </div>
-              )}
-
-              <div className="border border-gray-200 rounded-2xl bg-white shadow-sm">
-                <button
-                  type="button"
-                  onClick={toggleArchivedSection}
-                  className="w-full flex items-center gap-3 px-6 py-4 text-left hover:bg-gray-50 transition-colors"
-                >
-                  {archivedOpen ? (
-                    <ChevronDown className="w-4 h-4 text-gray-500" />
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-500" />
-                  )}
-                  <div className="flex-1">
-                    <span className="font-semibold text-gray-700">Projets archivés</span>
-                  </div>
-                  <span className="text-sm text-gray-500">
-                    {archivedLoaded ? archivedProjects.length : '\u2014'}
-                  </span>
-                </button>
-                {archivedOpen && (
-                  <div className="px-6 pb-6 space-y-4">
-                    {archivedLoading ? (
-                      <div className="text-center py-8">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#328fce] mx-auto" />
-                      </div>
-                    ) : archivedProjects.length === 0 ? (
-                      <div className="text-sm text-gray-500 bg-gray-50 border border-dashed border-gray-200 rounded-xl p-4">
-                        Aucun projet archivé
-                      </div>
-                    ) : (
-                      archivedProjects.map((project) => (
-                        <div key={project.id} className="opacity-60">
-                          {renderProjectCard(project)}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()
+        <ProjectsList
+          projects={projects}
+          archivedProjects={archivedProjects}
+          archivedLoaded={archivedLoaded}
+          archivedOpen={archivedOpen}
+          archivedLoading={archivedLoading}
+          onToggleArchivedSection={toggleArchivedSection}
+          onEdit={(projectId) => navigate(`/admin/projects/${projectId}/edit`)}
+          onToggleActive={handleToggleActive}
+          onDelete={handleDelete}
+        />
       )}
 
       <ConfirmDialog
@@ -237,6 +131,148 @@ export function ProjectsManager() {
         isLoading={isDeleting}
         confirmText="Supprimer"
       />
+    </div>
+  );
+}
+
+interface ProjectsListProps {
+  projects: Project[];
+  archivedProjects: Project[];
+  archivedLoaded: boolean;
+  archivedOpen: boolean;
+  archivedLoading: boolean;
+  onToggleArchivedSection: () => void;
+  onEdit: (projectId: string) => void;
+  onToggleActive: (project: Project) => void | Promise<void>;
+  onDelete: (project: Project) => void;
+}
+
+function ProjectsList({
+  projects,
+  archivedProjects,
+  archivedLoaded,
+  archivedOpen,
+  archivedLoading,
+  onToggleArchivedSection,
+  onEdit,
+  onToggleActive,
+  onDelete,
+}: ProjectsListProps) {
+  const activeProjects = projects.filter((project) => project.is_active);
+
+  const renderProjectCard = (project: Project, { muted = false }: { muted?: boolean } = {}) => {
+    const activeCounselors = project.counselors.filter((link) => link.counselor && link.counselor.is_active);
+
+    return (
+      <div
+        key={project.id}
+        className={`bg-white rounded-2xl shadow-lg p-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between ${
+          muted ? 'opacity-60' : ''
+        }`}
+      >
+        <div className="flex-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h3 className="text-xl font-semibold text-gray-800">{project.title}</h3>
+            <span className="text-sm text-gray-500">/{project.slug}</span>
+            <span
+              className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                project.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-300 text-gray-600'
+              }`}
+            >
+              {project.is_active ? 'Actif' : 'Archivé'}
+            </span>
+          </div>
+          {project.subtitle && <p className="text-[#328fce] mt-1">{project.subtitle}</p>}
+          {project.short_description && <p className="text-gray-600 mt-2">{project.short_description}</p>}
+          {activeCounselors.length > 0 && (
+            <div className="mt-3">
+              <p className="text-sm font-medium text-gray-700 mb-1">Animateur·rices référent·es :</p>
+              <div className="flex flex-wrap gap-2">
+                {activeCounselors.map((link) => (
+                  <span
+                    key={link.counselor?.id}
+                    className="inline-flex items-center gap-1 px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-sm"
+                  >
+                    {link.counselor?.first_name} {link.counselor?.last_name || ''}
+                    {link.role && <span className="text-xs text-purple-500">({link.role})</span>}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          <ActionSplitButton
+            primaryLabel="Modifier"
+            primaryIcon={<Edit className="w-4 h-4" />}
+            onPrimaryClick={() => onEdit(project.id)}
+            menuActions={[
+              {
+                label: project.is_active ? 'Archiver' : 'Activer',
+                icon: project.is_active ? <ToggleLeft className="w-4 h-4" /> : <ToggleRight className="w-4 h-4" />,
+                onClick: () => onToggleActive(project),
+                className: project.is_active
+                  ? 'hover:bg-yellow-50 text-yellow-700 focus-visible:ring-yellow-500/50'
+                  : 'hover:bg-green-50 text-green-700 focus-visible:ring-green-500/50',
+              },
+              {
+                label: 'Supprimer',
+                icon: <Trash2 className="w-4 h-4" />,
+                onClick: () => onDelete(project),
+                className: 'hover:bg-red-50 text-red-600 focus-visible:ring-red-500/50',
+              },
+            ]}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-8">
+      {activeProjects.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-green-700">Projets actifs</h3>
+            <span className="text-sm text-gray-600">({activeProjects.length})</span>
+          </div>
+          <div className="space-y-4">{activeProjects.map((project) => renderProjectCard(project))}</div>
+        </div>
+      )}
+
+      <div className="border border-gray-200 rounded-2xl bg-white shadow-sm">
+        <button
+          type="button"
+          onClick={onToggleArchivedSection}
+          className="w-full flex items-center gap-3 px-6 py-4 text-left hover:bg-gray-50 transition-colors"
+        >
+          {archivedOpen ? (
+            <ChevronDown className="w-4 h-4 text-gray-500" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-gray-500" />
+          )}
+          <div className="flex-1">
+            <span className="font-semibold text-gray-700">Projets archivés</span>
+          </div>
+          <span className="text-sm text-gray-500">{archivedLoaded ? archivedProjects.length : '\u2014'}</span>
+        </button>
+        {archivedOpen && (
+          <div className="px-6 pb-6 space-y-4">
+            {archivedLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#328fce] mx-auto" />
+              </div>
+            ) : archivedProjects.length === 0 ? (
+              <div className="text-sm text-gray-500 bg-gray-50 border border-dashed border-gray-200 rounded-xl p-4">
+                Aucun projet archivé
+              </div>
+            ) : (
+              archivedProjects.map((project) => renderProjectCard(project, { muted: true }))
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

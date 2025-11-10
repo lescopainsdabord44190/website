@@ -9,8 +9,9 @@ import { UserMenu } from './UserMenu';
 export function Header() {
   const { settings } = useSiteSettings();
   const { pages } = usePages();
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, isAdmin, isEditor, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const canAccessAdmin = isAdmin || isEditor;
 
   const menuPages = pages.filter((page) => page.is_active && page.show_in_menu && !page.parent_id);
 
@@ -109,7 +110,7 @@ export function Header() {
                     <User className="w-4 h-4" />
                     Mon Profil
                   </Link>
-                  {isAdmin && (
+                  {canAccessAdmin && (
                     <Link
                       href="/admin"
                       className="flex items-center gap-2 text-[#ff6243] hover:text-[#ff9fa8] transition-colors font-medium py-2"

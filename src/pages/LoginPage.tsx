@@ -61,18 +61,19 @@ export function LoginPage() {
         setRedirecting(true);
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data: roleData } = await supabase
+          const { data: rolesData } = await supabase
             .from('user_roles')
             .select('role')
-            .eq('user_id', user.id)
-            .eq('role', 'admin')
-            .maybeSingle();
+            .eq('user_id', user.id);
+
+          const hasAdminAccess =
+            rolesData?.some((row) => row.role === 'admin' || row.role === 'editor') ?? false;
           
           const minDelay = new Promise(resolve => setTimeout(resolve, 1000));
           await minDelay;
           
           setTimeout(() => {
-            navigate(roleData ? '/admin' : '/');
+            navigate(hasAdminAccess ? '/admin' : '/');
           }, 1000);
         }
       }

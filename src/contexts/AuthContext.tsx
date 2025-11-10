@@ -3,14 +3,33 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { useTracking, TrackingEvent, TrackingProperty } from '../hooks/useTracking';
 
+export type UserRole = 'admin' | 'editor';
+
+function isUserRole(value: unknown): value is UserRole {
+  return value === 'admin' || value === 'editor';
+}
+
+function determinePrimaryRole(roles: UserRole[]): 'admin' | 'editor' | 'user' {
+  if (roles.includes('admin')) {
+    return 'admin';
+  }
+  if (roles.includes('editor')) {
+    return 'editor';
+  }
+  return 'user';
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
+  isEditor: boolean;
+  roles: UserRole[];
   avatarUrl: string | null;
   updateAvatar: (url: string | null) => void;
   refreshAvatar: () => Promise<void>;
+  hasRole: (role: UserRole) => boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -24,17 +43,97 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isEditor, setIsEditor] = useState(false);
+  const [roles, setRoles] = useState<UserRole[]>([]);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
+  const ensureProfile = async (nextUser: User) => {
+    try {
+      const metadata = (nextUser.user_metadata ?? {}) as Record<string, unknown>;
+      const metadataFirstName =
+        typeof metadata.first_name === 'string' ? (metadata.first_name as string) : null;
+      const metadataLastName =
+        typeof metadata.last_name === 'string' ? (metadata.last_name as string) : null;
+      const safeEmail = typeof nextUser.email === 'string' ? nextUser.email : null;
+
+      const { data: existingProfile, error: selectError } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .eq('id', nextUser.id)
+        .maybeSingle();
+
+      if (selectError) {
+        console.error('Error fetching profile:', selectError);
+        return;
+      }
+
+      if (!existingProfile) {
+        await supabase.from('profiles').insert({
+          id: nextUser.id,
+          email: safeEmail,
+          first_name: metadataFirstName,
+          last_name: metadataLastName,
+          is_active: true,
+        });
+      } else if (existingProfile.email !== safeEmail) {
+        await supabase
+          .from('profiles')
+          .update({
+            email: safeEmail,
+          })
+          .eq('id', nextUser.id);
+      }
+    } catch (error) {
+      console.error('Error ensuring profile:', error);
+    }
+  };
+
+  const loadUserRoles = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+
+      if (error) {
+        throw error;
+      }
+
+      const normalizedRoles = (data ?? [])
+        .map((row) => row.role)
+        .filter(isUserRole);
+
+      setRoles(normalizedRoles);
+      setIsAdmin(normalizedRoles.includes('admin'));
+      setIsEditor(normalizedRoles.includes('editor'));
+    } catch (error) {
+      console.error('Error loading user roles:', error);
+      setRoles([]);
+      setIsAdmin(false);
+      setIsEditor(false);
+    }
+  };
+
+  const handleAuthenticatedUser = async (nextUser: User) => {
+    setLoading(true);
+    try {
+      await Promise.all([loadUserRoles(nextUser.id), loadAvatar(nextUser.id), ensureProfile(nextUser)]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        checkAdminRole(session.user.id);
-        loadAvatar(session.user.id);
+        await handleAuthenticatedUser(session.user);
       } else {
+        setRoles([]);
+        setIsAdmin(false);
+        setIsEditor(false);
         setLoading(false);
         setAvatarUrl(null);
       }
@@ -46,10 +145,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          await checkAdminRole(session.user.id);
-          await loadAvatar(session.user.id);
+          await handleAuthenticatedUser(session.user);
         } else {
           setIsAdmin(false);
+          setIsEditor(false);
+          setRoles([]);
           setAvatarUrl(null);
           setLoading(false);
         }
@@ -58,29 +158,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const checkAdminRole = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .eq('role', 'admin')
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error checking admin role:', error);
-        setIsAdmin(false);
-      } else {
-        setIsAdmin(!!data);
-      }
-    } catch (error) {
-      console.error('Error checking admin role:', error);
-      setIsAdmin(false);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadAvatar = async (userId: string) => {
     try {
@@ -115,20 +192,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!error && data.user) {
-        const { data: roleData } = await supabase
+        const { data: rawRoles } = await supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', data.user.id)
-          .eq('role', 'admin')
-          .maybeSingle();
+          .eq('user_id', data.user.id);
+
+        const normalizedRoles =
+          rawRoles?.map((row) => row.role).filter(isUserRole) ?? [];
+        const primaryRole = determinePrimaryRole(normalizedRoles);
 
         identifyUser(data.user.id, {
           email: data.user.email,
-          [TrackingProperty.USER_ROLE]: roleData ? 'admin' : 'user',
+          roles: normalizedRoles.length > 0 ? normalizedRoles.join(',') : null,
+          [TrackingProperty.USER_ROLE]: primaryRole,
         });
 
         trackEvent(TrackingEvent.USER_LOGGED_IN, {
-          [TrackingProperty.USER_ROLE]: roleData ? 'admin' : 'user',
+          [TrackingProperty.USER_ROLE]: primaryRole,
           [TrackingProperty.SUCCESS]: true,
         });
       } else if (error) {
@@ -173,9 +253,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         loading,
         isAdmin,
+        isEditor,
+        roles,
         avatarUrl,
         updateAvatar,
         refreshAvatar,
+        hasRole: (role: UserRole) => roles.includes(role),
         signIn,
         signUp,
         signOut,

@@ -7,8 +7,9 @@ import { useAuth } from '../contexts/AuthContext';
 
 export function ProjectPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { user, isAdmin, loading: authLoading } = useAuth();
-  const { project, loading } = useProjectBySlug(slug, { includeInactive: Boolean(user) });
+  const { user, isAdmin, isEditor, loading: authLoading } = useAuth();
+  const canManageProjects = isAdmin || isEditor;
+  const { project, loading } = useProjectBySlug(slug, { includeInactive: canManageProjects });
 
   if (loading || authLoading) {
     return (
@@ -38,7 +39,7 @@ export function ProjectPage() {
     (link) => link.counselor && link.counselor.is_active
   );
 
-  const showBanner = Boolean(user) && !project.is_active;
+  const showBanner = canManageProjects && !project.is_active;
 
   return (
     <div className="bg-gradient-to-br from-[#FEF5F0] to-white pb-12">

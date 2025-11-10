@@ -261,6 +261,33 @@ export function ProfilePage() {
     }
   };
 
+  const computeInitials = () => {
+    if (!user) {
+      return '?';
+    }
+
+    const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const firstName =
+      typeof metadata.first_name === 'string' ? (metadata.first_name as string) : '';
+    const lastName =
+      typeof metadata.last_name === 'string' ? (metadata.last_name as string) : '';
+
+    const initials = `${firstName?.[0] ?? ''}${lastName?.[0] ?? ''}`.trim().toUpperCase();
+
+    if (initials) {
+      return initials;
+    }
+
+    const emailPart = user.email ?? '';
+    if (emailPart) {
+      return emailPart.substring(0, 2).toUpperCase();
+    }
+
+    return '?';
+  };
+
+  const fallbackInitials = computeInitials();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FEF5F0] to-white py-12 px-4">
       <div className="container mx-auto max-w-2xl">
@@ -286,7 +313,7 @@ export function ProfilePage() {
                     />
                   ) : (
                     <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#328fce] to-[#84c19e] flex items-center justify-center text-white font-bold text-3xl border-4 border-gray-100 shadow-md">
-                      {user?.email?.[0].toUpperCase() || '?'}
+                      {fallbackInitials}
                     </div>
                   )}
                   <label

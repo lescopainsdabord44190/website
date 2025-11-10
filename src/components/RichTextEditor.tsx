@@ -12,6 +12,7 @@ import Paragraph from '@editorjs/paragraph';
 import { supabase } from '../lib/supabase';
 import { Alert } from '../lib/editorjs-alert';
 import { AnimListTool } from '../lib/editorjs-anim-list';
+import { VolunteerListTool } from '../lib/editorjs-volunteer-list';
 import { CarouselTool } from '../lib/editorjs-carousel';
 
 interface RichTextEditorProps {
@@ -164,6 +165,9 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
           },
           'anim-list': {
             class: AnimListTool,
+          },
+          'volunteer-list': {
+            class: VolunteerListTool,
           },
           carousel: {
             class: CarouselTool,
