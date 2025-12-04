@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { OutputData } from '@editorjs/editorjs';
+import type { OutputData as EditorJSOutputData } from '@editorjs/editorjs';
 import { SafeHtml } from './SafeHtml';
 import { AlertTriangle, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
 import { Link } from './Link';
@@ -15,7 +17,7 @@ import 'swiper/css/autoplay';
 interface EditorBlock {
   type: string;
   data: {
-    text?: string;
+    text?: string; // Pour paragraph, header, quote, etc.
     level?: number;
     items?: Array<{ content?: string; items?: unknown[]; meta?: unknown }> | { text: string; checked: boolean }[];
     style?: string;
@@ -29,6 +31,15 @@ interface EditorBlock {
     volunteerSlugs?: string[];
     images?: { url: string; caption?: string; alt?: string }[];
     autoplay?: boolean;
+    columns?: 1 | 2 | 3 | 4;
+    withBorder?: boolean;
+    columnContents?: EditorJSOutputData[];
+    backgroundTheme?: string | null;
+    icon?: string;
+    ctaType?: 'external-link' | 'internal-link' | 'important-action';
+    ctaText?: string; // Texte du bouton CTA
+    ctaUrl?: string; // URL du bouton CTA
+    internalPageSlug?: string | null; // Slug de la page interne
   };
 }
 
@@ -264,6 +275,25 @@ export function EditorJSRenderer({ content, className = '', enableToc = false }:
           const images = Array.isArray(block.data.images) ? block.data.images : [];
           const autoplay = Boolean(block.data.autoplay);
           return <CarouselBlock key={index} images={images} autoplay={autoplay} />;
+        }
+
+        if (block.type === 'columns') {
+          const columns = block.data.columns && [1, 2, 3, 4].includes(block.data.columns) ? block.data.columns : 2;
+          const withBorder = Boolean(block.data.withBorder);
+          const columnContents = Array.isArray(block.data.columnContents) ? block.data.columnContents : [];
+          const backgroundTheme = block.data.backgroundTheme || null;
+          return <ColumnsBlock key={index} columns={columns} withBorder={withBorder} columnContents={columnContents} backgroundTheme={backgroundTheme} enableToc={enableToc} />;
+        }
+
+        if (block.type === 'cta') {
+          const text = block.data.ctaText || '';
+          const url = block.data.ctaUrl || '';
+          const icon = block.data.icon || 'ArrowRight';
+          const ctaType = block.data.ctaType && ['external-link', 'internal-link', 'important-action'].includes(block.data.ctaType)
+            ? block.data.ctaType
+            : 'external-link';
+          const internalPageSlug = block.data.internalPageSlug || null;
+          return <CTABlock key={index} text={text} url={url} icon={icon} type={ctaType} internalPageSlug={internalPageSlug} />;
         }
 
         return null;
@@ -900,6 +930,161 @@ function CarouselBlock({ images, autoplay }: { images: CarouselImageData[]; auto
         </Swiper>
       </div>
     </div>
+  );
+}
+
+const BACKGROUND_THEMES = [
+  { id: null, name: 'Aucun', colors: '' },
+  { id: 'blue-green', name: 'Annonce', colors: 'from-[#84c19e] to-[#328fce]' },
+  { id: 'purple-blue', name: 'Événement', colors: 'from-purple-500 to-blue-500' },
+  { id: 'green-cyan', name: 'Bonne nouvelle', colors: 'from-green-400 to-cyan-500' },
+  { id: 'yellow-pink', name: 'À noter', colors: 'from-[#ffbf40] to-[#ff9fa8]' },
+  { id: 'red-pink', name: 'Important', colors: 'from-[#ff6243] to-[#ff9fa8]' },
+  { id: 'orange-red', name: 'Urgent', colors: 'from-orange-400 to-red-500' },
+];
+
+interface ColumnsBlockProps {
+  columns: 1 | 2 | 3 | 4;
+  withBorder: boolean;
+  columnContents: EditorJSOutputData[];
+  backgroundTheme: string | null;
+  enableToc?: boolean;
+}
+
+function ColumnsBlock({ columns, withBorder, columnContents, backgroundTheme, enableToc = false }: ColumnsBlockProps) {
+  const getGridClasses = () => {
+    const baseClasses = 'grid gap-4';
+    const responsiveClasses = {
+      1: 'grid-cols-1',
+      2: 'grid-cols-1 md:grid-cols-2',
+      3: 'grid-cols-1 md:grid-cols-3',
+      4: 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4',
+    };
+    return `${baseClasses} ${responsiveClasses[columns]}`;
+  };
+
+  const getBackgroundClasses = () => {
+    if (!backgroundTheme) {
+      return '';
+    }
+    const theme = BACKGROUND_THEMES.find((t) => t.id === backgroundTheme);
+    if (!theme || !theme.colors) {
+      return '';
+    }
+    return `bg-gradient-to-r ${theme.colors} text-white`;
+  };
+
+  const gridClasses = getGridClasses();
+  const bgClasses = getBackgroundClasses();
+  let containerClasses = gridClasses;
+  
+  if (withBorder) {
+    containerClasses += ' border border-gray-300 rounded-lg p-4';
+  }
+  if (bgClasses) {
+    containerClasses += ` ${bgClasses} p-4 rounded-lg`;
+  }
+
+  return (
+    <div className="my-6">
+      <div className={containerClasses}>
+        {columnContents.map((content, index) => (
+          <div
+            key={index}
+            className="min-h-[100px]"
+          >
+            <EditorJSRenderer content={content} enableToc={enableToc} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface CTABlockProps {
+  text: string;
+  url: string;
+  icon: string;
+  type: 'external-link' | 'internal-link' | 'important-action';
+  internalPageSlug?: string | null;
+}
+
+function CTABlock({ text, url, icon, type, internalPageSlug }: CTABlockProps) {
+  const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[icon] || LucideIcons.ArrowRight;
+
+  const typeStyles = {
+    'external-link': 'text-white',
+    'internal-link': 'text-white',
+    'important-action': 'text-white',
+  };
+  
+  const typeBgColors = {
+    'external-link': '#0090d3',
+    'internal-link': '#77b698',
+    'important-action': '#ff5232',
+  };
+  
+  const typeHoverColors = {
+    'external-link': '#007bb3',
+    'internal-link': '#659d82',
+    'important-action': '#e6482a',
+  };
+
+  const buttonClasses = `inline-flex items-center gap-2 py-2 rounded-lg font-medium transition-colors ${typeStyles[type]}`;
+  const bgColor = typeBgColors[type] || typeBgColors['external-link'];
+  const hoverColor = typeHoverColors[type] || typeHoverColors['external-link'];
+  const buttonId = `cta-button-${type}-${Math.random().toString(36).substring(7)}`;
+
+  if (!text && !url) {
+    return null;
+  }
+
+  // Déterminer l'URL finale : utiliser internalPageSlug si disponible, sinon url
+  const finalUrl = (type === 'internal-link' && internalPageSlug) ? internalPageSlug : url;
+  const isExternal = type === 'external-link' || (finalUrl && (finalUrl.startsWith('http://') || finalUrl.startsWith('https://') || finalUrl.startsWith('mailto:') || finalUrl.startsWith('tel:')));
+
+  if (isExternal) {
+    return (
+      <>
+        <style>{`
+          #${buttonId} {
+            background-color: ${bgColor} !important;
+          }
+          #${buttonId}:hover {
+            background-color: ${hoverColor} !important;
+          }
+        `}</style>
+        <a
+          id={buttonId}
+          href={finalUrl || '#'}
+          className={`${buttonClasses} mb-6 block w-fit`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <IconComponent className="w-4 h-4" />
+          <span>{text || 'En savoir plus'}</span>
+        </a>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <style>{`
+        #${buttonId} {
+          background-color: ${bgColor} !important;
+        }
+        #${buttonId}:hover {
+          background-color: ${hoverColor} !important;
+        }
+      `}</style>
+      <Link href={finalUrl || '#'} className={`${buttonClasses} mb-6 block w-fit`}>
+        <span id={buttonId} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors text-white">
+          <IconComponent className="w-4 h-4" />
+          <span>{text || 'En savoir plus'}</span>
+        </span>
+      </Link>
+    </>
   );
 }
 

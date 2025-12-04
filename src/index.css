@@ -159,6 +159,24 @@
   @apply text-sm text-gray-500 text-center mt-2;
 }
 
+/* Forcer le texte blanc dans les colonnes avec thème de fond */
+.editorjs-columns-with-theme .ce-paragraph,
+.editorjs-columns-with-theme .ce-header,
+.editorjs-columns-with-theme .ce-quote,
+.editorjs-columns-with-theme .cdx-list,
+.editorjs-columns-with-theme .cdx-checklist,
+.editorjs-columns-with-theme .cdx-warning,
+.editorjs-columns-with-theme .cdx-alert,
+.editorjs-columns-with-theme .ce-block__content,
+.editorjs-columns-with-theme .tc-cell {
+  @apply text-white !important;
+}
+
+.editorjs-columns-with-theme .ce-toolbar__plus,
+.editorjs-columns-with-theme .ce-toolbar__settings-btn {
+  @apply text-white hover:text-white/80;
+}
+
 @layer utilities {
   .text-brand-green {
     color: #84c19e;

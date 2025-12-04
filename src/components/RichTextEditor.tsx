@@ -14,6 +14,8 @@ import { Alert } from '../lib/editorjs-alert';
 import { AnimListTool } from '../lib/editorjs-anim-list';
 import { VolunteerListTool } from '../lib/editorjs-volunteer-list';
 import { CarouselTool } from '../lib/editorjs-carousel';
+import { ColumnsTool } from '../lib/editorjs-columns';
+import { CTATool } from '../lib/editorjs-cta';
 
 interface RichTextEditorProps {
   value: OutputData | null;
@@ -171,6 +173,12 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
           },
           carousel: {
             class: CarouselTool,
+          },
+          columns: {
+            class: ColumnsTool,
+          },
+          cta: {
+            class: CTATool,
           },
         },
         onChange: handleChange,
