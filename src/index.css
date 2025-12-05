@@ -70,6 +70,48 @@
   @apply bg-white border border-gray-300 rounded-lg shadow-lg;
 }
 
+.ce-toolbar__settings-btn {
+  background-color: #fff;
+}
+
+/* Fix pour le menu popover (block chooser) qui s'affiche quand on tape "/" */
+.ce-popover {
+  z-index: 9999 !important;
+}
+
+.ce-popover__container {
+  transform: translateX(24px) !important;
+}
+
+.ce-popover__items {
+  z-index: 9999 !important;
+  /* Permettre le scroll vertical pour voir tous les outils */
+  max-height: 400px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.ce-popover__item {
+  z-index: 9999 !important;
+}
+
+/* S'assurer que le container de l'éditeur permet l'overflow visible pour les menus */
+.codex-editor {
+  overflow: visible !important;
+  position: relative;
+}
+
+.codex-editor__redactor {
+  overflow: visible !important;
+}
+
+/* Container de l'éditeur - permettre l'overflow visible pour les popovers */
+.codex-editor__redactor,
+.ce-block__content,
+.ce-toolbar__content {
+  overflow: visible !important;
+}
+
 .cdx-block {
   @apply py-2;
 }

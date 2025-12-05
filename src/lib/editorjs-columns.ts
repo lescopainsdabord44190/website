@@ -14,6 +14,7 @@ import { Alert } from './editorjs-alert';
 import { AnimListTool } from './editorjs-anim-list';
 import { VolunteerListTool } from './editorjs-volunteer-list';
 import { CarouselTool } from './editorjs-carousel';
+import { editorJSI18nFr } from './editorjs-i18n-fr';
 
 interface ColumnsData {
   columns: 1 | 2 | 3 | 4;
@@ -386,6 +387,7 @@ export class ColumnsTool implements BlockTool {
           holder: editorId,
           data: content,
           placeholder: `Contenu de la colonne ${i + 1}...`,
+          i18n: editorJSI18nFr,
           tools: getToolsConfig() as any,
           onChange: async () => {
             await this.saveColumnContents();

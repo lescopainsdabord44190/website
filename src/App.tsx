@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { SupabaseStatusProvider } from './contexts/SupabaseStatusContext';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { CookieBanner } from './components/CookieBanner';
+import { MaintenanceOverlay } from './components/MaintenanceOverlay';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { HomePage } from './pages/HomePage';
 import { ContactPage } from './pages/ContactPage';
@@ -74,6 +76,7 @@ function Layout() {
   return (
     <div className="flex flex-col min-h-screen">
       <SpeedInsights />
+      <MaintenanceOverlay />
       {showHeaderFooter && <Header />}
       <main className="flex-1">
         <Routes>
@@ -112,9 +115,11 @@ function Layout() {
 
 function App() {
   const content = (
-    <AuthProvider>
-      <Layout />
-    </AuthProvider>
+    <SupabaseStatusProvider>
+      <AuthProvider>
+        <Layout />
+      </AuthProvider>
+    </SupabaseStatusProvider>
   );
 
   return (

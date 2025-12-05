@@ -1,7 +1,15 @@
+import { useState } from 'react';
 import { Link } from '../components/Link';
-import { Home, ArrowLeft } from 'lucide-react';
+import { Home, ArrowLeft, Gamepad2 } from 'lucide-react';
+import { MaintenanceGame } from '../components/MaintenanceGame';
 
 export function NotFoundPage() {
+  const [showGame, setShowGame] = useState(false);
+
+  if (showGame) {
+    return <MaintenanceGame onBack={() => setShowGame(false)} />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FEF5F0] to-white flex items-center justify-center px-4 relative overflow-hidden">
       <div className="max-w-2xl w-full text-center relative z-10">
@@ -38,6 +46,16 @@ export function NotFoundPage() {
           <p>
             Besoin d'aide ? <Link href="/contact" className="text-[#328fce] hover:underline font-medium">Contactez-nous</Link>
           </p>
+        </div>
+
+        <div className="mt-8">
+          <button
+            onClick={() => setShowGame(true)}
+            className="inline-flex items-center justify-center gap-2 bg-[#84c19e] text-white px-6 py-3 rounded-full hover:bg-[#6da884] transition-all hover:scale-105 font-medium shadow-lg"
+          >
+            <Gamepad2 className="w-5 h-5" />
+            Jouer avec Pollux
+          </button>
         </div>
       </div>
 

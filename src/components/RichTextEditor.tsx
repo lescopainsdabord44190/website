@@ -16,6 +16,7 @@ import { VolunteerListTool } from '../lib/editorjs-volunteer-list';
 import { CarouselTool } from '../lib/editorjs-carousel';
 import { ColumnsTool } from '../lib/editorjs-columns';
 import { CTATool } from '../lib/editorjs-cta';
+import { editorJSI18nFr } from '../lib/editorjs-i18n-fr';
 
 interface RichTextEditorProps {
   value: OutputData | null;
@@ -79,6 +80,7 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
         holder: editorId,
         data: valueRef.current || undefined,
         placeholder: 'Commencez à écrire votre contenu...',
+        i18n: editorJSI18nFr,
         tools: {
           paragraph: {
             class: Paragraph,
@@ -218,7 +220,7 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
   }, [editorId, handleChange]);
 
   return (
-    <div className="border border-gray-300 rounded-lg p-4 bg-white min-h-[400px]">
+    <div className="border border-gray-300 rounded-lg p-4 bg-white min-h-[400px] overflow-visible relative">
       <div id={editorId} />
     </div>
   );
