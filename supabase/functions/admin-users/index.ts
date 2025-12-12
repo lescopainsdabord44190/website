@@ -210,7 +210,7 @@ Deno.serve(async (req: Request) => {
             first_name: firstName ?? undefined,
             last_name: lastName ?? undefined,
           },
-          redirectTo: siteUrl ? `${siteUrl}/reset-password` : undefined,
+          redirectTo: siteUrl ? `${siteUrl}/set-password` : undefined,
         });
 
         if (error || !data?.user) {
@@ -230,6 +230,7 @@ Deno.serve(async (req: Request) => {
             first_name: firstName,
             last_name: lastName,
             is_active: true,
+            password_set: false, // L'utilisateur invité n'a pas encore défini son mot de passe
           },
           { onConflict: 'id' }
         );
@@ -483,16 +484,22 @@ Deno.serve(async (req: Request) => {
             first_name: profile?.first_name ?? (typeof metadata.first_name === 'string' ? metadata.first_name : undefined),
             last_name: profile?.last_name ?? (typeof metadata.last_name === 'string' ? metadata.last_name : undefined),
           },
-          redirectTo: siteUrl ? `${siteUrl}/reset-password` : undefined,
+          redirectTo: siteUrl ? `${siteUrl}/set-password` : undefined,
         });
 
         if (inviteError) {
           return jsonResponse<ErrorResponse>(400, {
             success: false,
-            error: 'Impossible de renvoyer l’invitation',
+            error: 'Impossible de renvoyer l'invitation',
             details: inviteError.message,
           });
         }
+
+        // Réinitialiser password_set à false car on renvoie une invitation
+        await supabaseAdmin
+          .from('profiles')
+          .update({ password_set: false })
+          .eq('id', userId);
 
         return jsonResponse<SuccessResponse>(200, {
           success: true,
