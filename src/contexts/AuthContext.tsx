@@ -114,12 +114,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleAuthenticatedUser = async (nextUser: User) => {
-    setLoading(true);
+  const handleAuthenticatedUser = async (nextUser: User, options: { useLoading?: boolean } = {}) => {
+    const { useLoading = true } = options;
+    if (useLoading) {
+      setLoading(true);
+    }
     try {
       await Promise.all([loadUserRoles(nextUser.id), loadAvatar(nextUser.id), ensureProfile(nextUser)]);
     } finally {
-      setLoading(false);
+      if (useLoading) {
+        setLoading(false);
+      }
     }
   };
 
@@ -129,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        await handleAuthenticatedUser(session.user);
+        await handleAuthenticatedUser(session.user, { useLoading: true });
       } else {
         setRoles([]);
         setIsAdmin(false);
@@ -139,13 +144,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          await handleAuthenticatedUser(session.user);
+          // Ne pas repasser en loading pour un événement de rafraîchissement/signed_in déjà authentifié
+          await handleAuthenticatedUser(session.user, { useLoading: false });
         } else {
           setIsAdmin(false);
           setIsEditor(false);
