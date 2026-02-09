@@ -50,6 +50,19 @@ interface EditorJSRendererProps {
 }
 
 export function EditorJSRenderer({ content, className = '', enableToc = false }: EditorJSRendererProps) {
+  const [activeImage, setActiveImage] = useState<{ url: string; caption?: string } | null>(null);
+
+  useEffect(() => {
+    if (!activeImage) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setActiveImage(null);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [activeImage]);
+
   if (!content || !content.blocks || content.blocks.length === 0) {
     return null;
   }
@@ -112,11 +125,22 @@ export function EditorJSRenderer({ content, className = '', enableToc = false }:
         if (block.type === 'image' && block.data.file) {
           return (
             <div key={index} className="my-6">
-              <img
-                src={block.data.file.url}
-                alt={block.data.caption || ''}
-                className="rounded-lg shadow-md w-full h-auto"
-              />
+              <button
+                type="button"
+                className="block w-full"
+                onClick={() =>
+                  setActiveImage({
+                    url: block.data.file?.url as string,
+                    caption: block.data.caption || undefined,
+                  })
+                }
+              >
+                <img
+                  src={block.data.file.url}
+                  alt={block.data.caption || ''}
+                  className="rounded-lg shadow-md w-full h-auto cursor-zoom-in"
+                />
+              </button>
               {block.data.caption && (
                 <p className="text-sm text-gray-500 text-center mt-2">
                   {block.data.caption}
@@ -298,6 +322,37 @@ export function EditorJSRenderer({ content, className = '', enableToc = false }:
 
         return null;
       })}
+
+      {activeImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6">
+          <button
+            type="button"
+            className="absolute inset-0"
+            aria-label="Fermer l'image"
+            onClick={() => setActiveImage(null)}
+          />
+          <div className="relative max-w-6xl w-full">
+            <img
+              src={activeImage.url}
+              alt={activeImage.caption || ''}
+              className="w-full h-auto max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+            />
+            {activeImage.caption && (
+              <p className="text-sm text-gray-200 text-center mt-3">
+                {activeImage.caption}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => setActiveImage(null)}
+              className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-white text-gray-700 shadow-lg hover:bg-gray-100"
+              aria-label="Fermer"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

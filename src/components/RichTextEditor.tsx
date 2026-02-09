@@ -108,7 +108,7 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
               uploader: {
                 async uploadByFile(file: File) {
                   try {
-                    const resizedFile = await resizeImageFile(file, 1280, 720);
+                    const resizedFile = await resizeImageFile(file, 2560, 1440);
                     const fileExt = file.name.split('.').pop();
                     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
                     const filePath = `content/${fileName}`;

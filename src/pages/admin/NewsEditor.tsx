@@ -312,25 +312,6 @@ export function NewsEditor() {
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
                   />
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      className="w-12 h-10 rounded cursor-pointer border"
-                      value={newCategoryColor}
-                      onChange={(e) => setNewCategoryColor(e.target.value)}
-                    />
-                    <select
-                      className="px-3 py-2 border rounded-xl"
-                      value={newCategoryColor}
-                      onChange={(e) => setNewCategoryColor(e.target.value)}
-                    >
-                      {CATEGORY_COLORS.map((color) => (
-                        <option key={color} value={color}>
-                          {color}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
                   <button
                     onClick={addNewCategory}
                     className="px-3 py-2 bg-white border rounded-xl hover:bg-gray-100"
@@ -378,6 +359,20 @@ export function NewsEditor() {
                   <Upload className="w-4 h-4" />
                   Télécharger une image
                 </button>
+                {imageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImageUrl(null);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 px-3 py-2 border rounded-xl text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    Supprimer l’image
+                  </button>
+                )}
               </div>
             </div>
 

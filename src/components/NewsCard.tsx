@@ -18,7 +18,7 @@ export function NewsCard({ article }: NewsCardProps) {
       to={`/news/${article.slug}`}
       className="group bg-white rounded-2xl shadow hover:shadow-lg transition overflow-hidden flex flex-col"
     >
-      <div className="relative h-48 overflow-hidden">
+      <div className="relative w-full aspect-[1300/720] overflow-hidden">
         <div
           className="absolute inset-0"
           style={

@@ -20,6 +20,7 @@ export interface NewsArticle {
     id: string;
     first_name: string | null;
     last_name: string | null;
+    avatar_url?: string | null;
   } | null;
   image_url: string | null;
   author_id: string | null;
@@ -101,6 +102,7 @@ const normalizeArticle = (raw: any): NewsArticle => {
           id: author.id,
           first_name: author.first_name ?? null,
           last_name: author.last_name ?? null,
+          avatar_url: author.avatar_url ?? null,
         }
       : null,
     image_url: raw.image_url ?? null,
@@ -175,7 +177,7 @@ export function useNewsArticles(initialOptions: FetchNewsArticlesOptions = {}) {
             `
               *,
               category:news_categories(*),
-            author:profiles(id, first_name, last_name),
+            author:profiles(id, first_name, last_name, avatar_url),
               news_article_tags(
                 tag_id,
                 news_tags(*)
@@ -262,7 +264,7 @@ export function useNewsArticles(initialOptions: FetchNewsArticlesOptions = {}) {
             `
               *,
               category:news_categories(*),
-              author:profiles(id, first_name, last_name),
+              author:profiles(id, first_name, last_name, avatar_url),
               news_article_tags(
                 tag_id,
                 news_tags(*)
@@ -354,7 +356,7 @@ export function useNewsArticles(initialOptions: FetchNewsArticlesOptions = {}) {
           `
             *,
             category:news_categories(*),
-            author:profiles(id, first_name, last_name),
+            author:profiles(id, first_name, last_name, avatar_url),
             news_article_tags(
               tag_id,
               news_tags(*)
@@ -382,7 +384,7 @@ export function useNewsArticles(initialOptions: FetchNewsArticlesOptions = {}) {
           `
             *,
             category:news_categories(*),
-            author:profiles(id, first_name, last_name),
+            author:profiles(id, first_name, last_name, avatar_url),
             news_article_tags(
               tag_id,
               news_tags(*)

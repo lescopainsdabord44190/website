@@ -50,7 +50,6 @@ export function Header() {
               </Link>
             ))}
             <Link href="/news" className="text-gray-700 hover:text-[#328fce] transition-colors font-medium flex items-center gap-2">
-              <Newspaper className="w-4 h-4" />
               Actualités
             </Link>
             <Link href="/contact" className="text-gray-700 hover:text-[#328fce] transition-colors font-medium">
