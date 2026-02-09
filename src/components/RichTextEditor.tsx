@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import EditorJS, { OutputData } from '@editorjs/editorjs';
 import Header from '@editorjs/header';
 import List from '@editorjs/list';
-import ImageTool from '@editorjs/image';
+import { ImageBlurTool } from '../lib/editorjs-image-blur';
 import Quote from '@editorjs/quote';
 import Delimiter from '@editorjs/delimiter';
 import Table from '@editorjs/table';
@@ -103,18 +103,19 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
             },
           },
           image: {
-            class: ImageTool,
+            class: ImageBlurTool as unknown as any,
             config: {
               uploader: {
                 async uploadByFile(file: File) {
                   try {
+                    const resizedFile = await resizeImageFile(file, 1280, 720);
                     const fileExt = file.name.split('.').pop();
                     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
                     const filePath = `content/${fileName}`;
 
                     const { error: uploadError } = await supabase.storage
                       .from('page_assets')
-                      .upload(filePath, file);
+                      .upload(filePath, resizedFile);
 
                     if (uploadError) throw uploadError;
 
@@ -224,4 +225,56 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
       <div id={editorId} />
     </div>
   );
+}
+
+async function resizeImageFile(file: File, maxWidth: number, maxHeight: number): Promise<File> {
+  if (!file.type.startsWith('image/')) {
+    return file;
+  }
+
+  const image = await loadImageFromFile(file);
+  const { width, height } = image;
+  const scale = Math.min(1, maxWidth / width, maxHeight / height);
+
+  if (scale === 1) {
+    return file;
+  }
+
+  const targetWidth = Math.round(width * scale);
+  const targetHeight = Math.round(height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return file;
+  }
+
+  ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+  const mime = file.type === 'image/png' || file.type === 'image/webp' ? file.type : 'image/jpeg';
+  const quality = mime === 'image/jpeg' ? 0.9 : undefined;
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mime, quality));
+
+  if (!blob) {
+    return file;
+  }
+
+  return new File([blob], file.name, { type: mime });
+}
+
+function loadImageFromFile(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Image load failed'));
+    };
+    img.src = objectUrl;
+  });
 }

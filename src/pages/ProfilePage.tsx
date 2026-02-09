@@ -22,6 +22,11 @@ export function ProfilePage() {
   const [avatarSuccess, setAvatarSuccess] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState(false);
+  const [profileError, setProfileError] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -35,13 +40,15 @@ export function ProfilePage() {
     try {
       const { data } = await supabase
         .from('profiles')
-        .select('avatar_url')
+        .select('avatar_url, first_name, last_name')
         .eq('id', user.id)
         .maybeSingle();
 
       if (data?.avatar_url) {
         setAvatarUrl(data.avatar_url);
       }
+      setFirstName(data?.first_name ?? '');
+      setLastName(data?.last_name ?? '');
     } catch (err) {
       console.error('Error loading avatar:', err);
     }
@@ -210,6 +217,54 @@ export function ProfilePage() {
     }
   };
 
+  const handleProfileSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!user) return;
+
+    setProfileError('');
+    setProfileSuccess(false);
+    setProfileSaving(true);
+
+    const nextFirstName = firstName.trim();
+    const nextLastName = lastName.trim();
+
+    try {
+      const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            id: user.id,
+            first_name: nextFirstName || null,
+            last_name: nextLastName || null,
+          },
+          { onConflict: 'id' }
+        );
+
+      if (profileUpdateError) {
+        throw profileUpdateError;
+      }
+
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: {
+          first_name: nextFirstName || null,
+          last_name: nextLastName || null,
+        },
+      });
+
+      if (metadataError) {
+        throw metadataError;
+      }
+
+      setProfileSuccess(true);
+      setTimeout(() => setProfileSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setProfileError('Erreur lors de la mise à jour du nom');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     if (!user) return;
 
@@ -267,12 +322,14 @@ export function ProfilePage() {
     }
 
     const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
-    const firstName =
+    const metadataFirstName =
       typeof metadata.first_name === 'string' ? (metadata.first_name as string) : '';
-    const lastName =
+    const metadataLastName =
       typeof metadata.last_name === 'string' ? (metadata.last_name as string) : '';
+    const sourceFirstName = firstName || metadataFirstName;
+    const sourceLastName = lastName || metadataLastName;
 
-    const initials = `${firstName?.[0] ?? ''}${lastName?.[0] ?? ''}`.trim().toUpperCase();
+    const initials = `${sourceFirstName?.[0] ?? ''}${sourceLastName?.[0] ?? ''}`.trim().toUpperCase();
 
     if (initials) {
       return initials;
@@ -366,6 +423,53 @@ export function ProfilePage() {
               <div>
                 <label className="text-sm font-medium text-gray-500">Email</label>
                 <p className="text-gray-800 font-medium">{user?.email}</p>
+              </div>
+              <div className="pt-4">
+                <label className="text-sm font-medium text-gray-500">Nom d'affichage</label>
+                <p className="text-xs text-gray-400 mt-1">
+                  Ce nom est utilisé pour vous identifier dans l'application.
+                </p>
+                <form onSubmit={handleProfileSubmit} className="mt-3 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
+                      <input
+                        type="text"
+                        value={firstName}
+                        onChange={(event) => setFirstName(event.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                      <input
+                        type="text"
+                        value={lastName}
+                        onChange={(event) => setLastName(event.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#328fce] focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                  {profileSuccess && (
+                    <div className="flex items-center gap-1 text-green-600 text-sm">
+                      <Check className="w-4 h-4" />
+                      <span>Nom mis à jour !</span>
+                    </div>
+                  )}
+                  {profileError && (
+                    <div className="flex items-center gap-1 text-red-600 text-sm">
+                      <AlertCircle className="w-4 h-4" />
+                      <span>{profileError}</span>
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={profileSaving}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#328fce] text-white rounded-lg hover:bg-[#84c19e] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {profileSaving ? 'Enregistrement...' : 'Enregistrer le nom'}
+                  </button>
+                </form>
               </div>
             </div>
           </div>

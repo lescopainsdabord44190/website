@@ -66,6 +66,9 @@ export const editorJSI18nFr = {
         'With border': 'Avec bordure',
         'Stretch image': 'Étirer l\'image',
         'With background': 'Avec arrière-plan',
+        'Blur image': 'Flouter l\'image',
+        'Apply blur': 'Appliquer',
+        'Cancel blur': 'Annuler',
       },
       code: {
         'Enter a code': 'Saisir un code',

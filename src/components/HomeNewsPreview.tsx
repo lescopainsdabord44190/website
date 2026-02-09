@@ -29,13 +29,6 @@ export function HomeNewsPreview() {
             <p className="text-sm uppercase tracking-wide text-[#84c19e] font-semibold">Actualités</p>
             <h2 className="text-3xl font-bold text-gray-900">Les dernières nouvelles</h2>
           </div>
-          <Link
-            href="/news"
-            className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#328fce] text-[#328fce] hover:bg-[#328fce] hover:text-white transition-colors"
-          >
-            Voir tout
-            <ArrowRight className="w-4 h-4" />
-          </Link>
         </div>
 
         {loading ? (

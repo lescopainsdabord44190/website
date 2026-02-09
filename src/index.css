@@ -201,6 +201,123 @@
   @apply text-sm text-gray-500 text-center mt-2;
 }
 
+.editorjs-image-blur-overlay {
+  @apply fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-6;
+}
+
+.editorjs-image-blur-panel {
+  @apply bg-white rounded-xl shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col gap-4 p-4;
+}
+
+.editorjs-image-blur-header h3 {
+  @apply text-lg font-semibold text-gray-900;
+}
+
+.editorjs-image-blur-header p {
+  @apply text-sm text-gray-600;
+}
+
+.editorjs-image-blur-canvas-wrapper {
+  @apply relative bg-gray-100 rounded-lg overflow-hidden;
+}
+
+.editorjs-image-blur-canvas {
+  @apply w-full h-auto block cursor-crosshair;
+  touch-action: none;
+}
+
+.editorjs-image-blur-brush {
+  @apply absolute rounded-full border border-white/80 bg-white/20 pointer-events-none;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+}
+
+.editorjs-image-blur-controls {
+  @apply flex flex-col gap-3;
+}
+
+@media (min-width: 768px) {
+  .editorjs-image-blur-controls {
+    @apply flex-row items-center justify-between;
+  }
+}
+
+.editorjs-image-blur-mode {
+  @apply inline-flex items-center gap-0 rounded-md border border-gray-200 overflow-hidden;
+}
+
+.editorjs-image-blur-toggle {
+  @apply px-3 py-2 text-sm font-semibold text-gray-600 transition;
+}
+
+.editorjs-image-blur-toggle.active {
+  @apply bg-[#328fce] text-white;
+}
+
+.editorjs-image-blur-toggle + .editorjs-image-blur-toggle {
+  @apply border-l border-gray-200;
+}
+
+.editorjs-image-blur-rotation {
+  @apply hidden;
+  position: relative;
+}
+
+.editorjs-image-blur-rotation input[type='range'] {
+  @apply accent-[#ff9fa8];
+}
+
+.editorjs-image-blur-emoji-preview {
+  @apply inline-flex items-center justify-center text-2xl w-10 h-10 rounded-full bg-gray-100 text-gray-700 cursor-pointer;
+  transition: transform 0.15s ease;
+}
+
+.editorjs-image-blur-emoji-picker {
+  @apply hidden grid grid-cols-10 gap-2 p-3 bg-white border border-gray-200 rounded-lg shadow-lg;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 10;
+  width: max-content;
+  max-width: 360px;
+}
+
+.editorjs-image-blur-emoji-picker.open {
+  @apply grid;
+}
+
+.editorjs-image-blur-emoji-option {
+  @apply w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100;
+  font-size: 20px;
+}
+
+.editorjs-image-blur-size {
+  @apply flex flex-col gap-2 text-sm text-gray-700;
+}
+
+.editorjs-image-blur-size input[type='range'] {
+  @apply accent-[#328fce];
+}
+
+.editorjs-image-blur-actions {
+  @apply flex items-center justify-end gap-2;
+}
+
+.editorjs-image-blur-button {
+  @apply px-4 py-2 rounded-md text-sm font-semibold transition;
+}
+
+.editorjs-image-blur-button.primary {
+  @apply bg-[#328fce] text-white hover:bg-[#2b7bb3];
+}
+
+.editorjs-image-blur-button.secondary {
+  @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
+}
+
+.editorjs-image-blur-button:disabled {
+  @apply opacity-60 cursor-not-allowed;
+}
+
 /* Forcer le texte blanc dans les colonnes avec thème de fond */
 .editorjs-columns-with-theme .ce-paragraph,
 .editorjs-columns-with-theme .ce-header,
