@@ -21,6 +21,8 @@ import { SetPasswordPage } from './pages/SetPasswordPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { SpeedInsights } from "@vercel/speed-insights/react"
+import { NewsListPage } from './pages/NewsListPage';
+import { NewsArticlePage } from './pages/NewsArticlePage';
 
 function AuthenticatedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -105,6 +107,14 @@ function InvitationRedirect() {
   return null;
 }
 
+function ScrollToTop() {
+  const location = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [location.pathname]);
+  return null;
+}
+
 function Layout() {
   const location = useLocation();
   const { loading } = useAuth();
@@ -126,6 +136,7 @@ function Layout() {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <ScrollToTop />
       <SpeedInsights />
       <MaintenanceOverlay />
       <InvitationRedirect />
@@ -141,6 +152,8 @@ function Layout() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/set-password" element={<SetPasswordPage />} />
           <Route path="/404" element={<NotFoundPage />} />
+          <Route path="/news" element={<NewsListPage />} />
+          <Route path="/news/:slug" element={<NewsArticlePage />} />
           <Route
             path="/profile"
             element={

@@ -1,6 +1,6 @@
 import { useAuth, type UserRole } from '../../contexts/AuthContext';
 import type { ReactNode } from 'react';
-import { FileText, Settings, Lightbulb, Users, Sparkles, HandHeart, Layers, UserCircle } from 'lucide-react';
+import { FileText, Settings, Lightbulb, Users, Sparkles, HandHeart, Layers, UserCircle, Newspaper } from 'lucide-react';
 import { Routes, Route, Navigate, Link, useLocation } from 'react-router';
 import { PagesManager } from './PagesManager';
 import { PageEditor } from './PageEditor';
@@ -16,6 +16,8 @@ import { CommissionsManager } from './CommissionsManager';
 import { CommissionEditor } from './CommissionEditor';
 import { UsersManager } from './UsersManager';
 import { UserEditor } from './UserEditor';
+import { NewsManager } from './NewsManager';
+import { NewsEditor } from './NewsEditor';
 
 export function AdminDashboard() {
   const { user, isAdmin, isEditor, roles } = useAuth();
@@ -47,6 +49,7 @@ export function AdminDashboard() {
   const isCommissionsRoute = location.pathname.startsWith('/admin/commissions');
   const isHighlightsRoute = location.pathname.startsWith('/admin/highlights');
   const isUsersRoute = location.pathname.startsWith('/admin/users');
+  const isNewsRoute = location.pathname.startsWith('/admin/news');
 
   const navigationItems: Array<{
     label: string;
@@ -102,6 +105,13 @@ export function AdminDashboard() {
       to: '/admin/highlights',
       icon: <Lightbulb className="w-5 h-5" />,
       isActive: isHighlightsRoute,
+      allowedRoles: ['admin', 'editor'],
+    },
+    {
+      label: 'Actualités',
+      to: '/admin/news',
+      icon: <Newspaper className="w-5 h-5" />,
+      isActive: isNewsRoute,
       allowedRoles: ['admin', 'editor'],
     },
     {
@@ -181,6 +191,9 @@ export function AdminDashboard() {
               <Route path="commissions/new" element={<CommissionEditor />} />
               <Route path="commissions/:id/edit" element={<CommissionEditor />} />
               <Route path="highlights" element={<HighlightsManager />} />
+              <Route path="news" element={<NewsManager />} />
+              <Route path="news/new" element={<NewsEditor />} />
+              <Route path="news/:id/edit" element={<NewsEditor />} />
               <Route
                 path="settings"
                 element={hasRequiredRole(['admin']) ? <SettingsManager /> : <UnauthorizedSection />}

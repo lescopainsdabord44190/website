@@ -6,6 +6,7 @@ import { EditorJSRenderer } from '../components/EditorJSRenderer';
 import { OutputData } from '@editorjs/editorjs';
 import { useTracking, TrackingEvent, TrackingProperty } from '../hooks/useTracking';
 import { FeaturedHighlights } from '../components/FeaturedHighlights';
+import { HomeNewsPreview } from '../components/HomeNewsPreview';
 
 export function HomePage() {
   const { settings } = useSiteSettings();
@@ -86,6 +87,8 @@ export function HomePage() {
       </section>
 
       <FeaturedHighlights />
+
+      <HomeNewsPreview />
 
       {/* <section className="py-16 bg-white">
         <div className="container mx-auto px-4">

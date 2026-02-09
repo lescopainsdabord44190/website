@@ -397,6 +397,119 @@ export interface Database {
           created_at?: string;
         };
       };
+      news_categories: {
+        Row: {
+          id: string;
+          name: string;
+          color: string;
+          order_index: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          color: string;
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          color?: string;
+          order_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      news_tags: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      news_articles: {
+        Row: {
+          id: string;
+          title: string;
+          slug: string;
+          summary: string;
+          content: any;
+          status: 'draft' | 'published';
+          category_id: string | null;
+          image_url: string | null;
+          author_id: string | null;
+          published_at: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          slug: string;
+          summary?: string;
+          content?: any;
+          status?: 'draft' | 'published';
+          category_id?: string | null;
+          image_url?: string | null;
+          author_id?: string | null;
+          published_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          slug?: string;
+          summary?: string;
+          content?: any;
+          status?: 'draft' | 'published';
+          category_id?: string | null;
+          image_url?: string | null;
+          author_id?: string | null;
+          published_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+      };
+      news_article_tags: {
+        Row: {
+          article_id: string;
+          tag_id: string;
+        };
+        Insert: {
+          article_id: string;
+          tag_id: string;
+        };
+        Update: {
+          article_id?: string;
+          tag_id?: string;
+        };
+      };
     };
   };
 }

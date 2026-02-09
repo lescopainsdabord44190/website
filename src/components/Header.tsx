@@ -2,7 +2,7 @@ import { Link } from './Link';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { usePages, buildFullPath } from '../hooks/usePages';
 import { useAuth } from '../contexts/AuthContext';
-import { Menu, X, LogOut, Settings, User, LogIn, Home } from 'lucide-react';
+import { Menu, X, LogOut, Settings, User, LogIn, Home, Newspaper } from 'lucide-react';
 import { useState } from 'react';
 import { UserMenu } from './UserMenu';
 
@@ -49,6 +49,10 @@ export function Header() {
                 {page.title}
               </Link>
             ))}
+            <Link href="/news" className="text-gray-700 hover:text-[#328fce] transition-colors font-medium flex items-center gap-2">
+              <Newspaper className="w-4 h-4" />
+              Actualités
+            </Link>
             <Link href="/contact" className="text-gray-700 hover:text-[#328fce] transition-colors font-medium">
               Contact
             </Link>
@@ -93,6 +97,13 @@ export function Header() {
                   {page.title}
                 </Link>
               ))}
+              <Link
+                href="/news"
+                className="text-gray-700 hover:text-[#328fce] transition-colors font-medium py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Actualités
+              </Link>
               <Link
                 href="/contact"
                 className="text-gray-700 hover:text-[#328fce] transition-colors font-medium py-2"

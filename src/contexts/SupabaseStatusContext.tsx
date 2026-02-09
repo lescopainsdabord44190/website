@@ -106,10 +106,6 @@ export function SupabaseStatusProvider({ children }: { children: ReactNode }) {
       const wasOffline = sessionStorage.getItem('supabase_was_offline') === 'true';
       if (wasOffline) {
         sessionStorage.removeItem('supabase_was_offline');
-        // Rafraîchir la page après un court délai pour permettre à l'UI de se mettre à jour
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
       }
     } else if (!isOnline) {
       // Marquer qu'on était offline
