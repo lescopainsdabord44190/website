@@ -53,7 +53,7 @@ export function NewsCard({ article }: NewsCardProps) {
         </div>
       </div>
       <div className="p-4 flex-1 flex flex-col gap-2">
-        {article.summary && <p className="text-sm text-gray-600 line-clamp-3">{article.summary}</p>}
+        {article.summary && <p className="text-sm text-gray-600 line-clamp-5">{article.summary}</p>}
         <div className="mt-auto text-sm font-medium text-[#328fce]">Lire l’article →</div>
       </div>
     </Link>
