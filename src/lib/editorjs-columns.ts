@@ -14,6 +14,8 @@ import { Alert } from './editorjs-alert';
 import { AnimListTool } from './editorjs-anim-list';
 import { VolunteerListTool } from './editorjs-volunteer-list';
 import { CarouselTool } from './editorjs-carousel';
+import { TextColorTool } from './editorjs-text-color';
+import { FileDownloadTool } from './editorjs-file-download';
 import { editorJSI18nFr } from './editorjs-i18n-fr';
 
 interface ColumnsData {
@@ -186,6 +188,12 @@ const getToolsConfig = () => ({
   },
   carousel: {
     class: CarouselTool,
+  },
+  file: {
+    class: FileDownloadTool,
+  },
+  textColor: {
+    class: TextColorTool as unknown as any,
   },
   // Note: 'columns' est intentionnellement exclu pour éviter la récursion
 });

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { OutputData } from '@editorjs/editorjs';
 import type { OutputData as EditorJSOutputData } from '@editorjs/editorjs';
 import { SafeHtml } from './SafeHtml';
-import { AlertTriangle, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
@@ -22,6 +22,10 @@ interface EditorBlock {
     items?: Array<{ content?: string; items?: unknown[]; meta?: unknown }> | { text: string; checked: boolean }[];
     style?: string;
     file?: { url: string };
+    url?: string;
+    fileName?: string;
+    label?: string;
+    size?: number;
     caption?: string;
     content?: string[][];
     title?: string;
@@ -47,6 +51,18 @@ interface EditorJSRendererProps {
   content: OutputData | null;
   className?: string;
   enableToc?: boolean;
+}
+
+function formatFileSize(bytes?: number): string {
+  if (!bytes || bytes <= 0) return '';
+  const units = ['o', 'Ko', 'Mo', 'Go'];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(value >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
 }
 
 export function EditorJSRenderer({ content, className = '', enableToc = false }: EditorJSRendererProps) {
@@ -146,6 +162,28 @@ export function EditorJSRenderer({ content, className = '', enableToc = false }:
                   {block.data.caption}
                 </p>
               )}
+            </div>
+          );
+        }
+
+        if (block.type === 'file' && block.data.url) {
+          const fileLabel = block.data.label || block.data.fileName || 'Télécharger';
+          const sizeLabel = formatFileSize(block.data.size);
+          return (
+            <div key={index} className="my-6">
+              <a
+                href={block.data.url}
+                download={block.data.fileName || undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-[#328fce] hover:bg-[#84c19e] transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>
+                  {fileLabel}
+                  {sizeLabel && <span className="opacity-80"> ({sizeLabel})</span>}
+                </span>
+              </a>
             </div>
           );
         }

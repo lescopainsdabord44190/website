@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router';
-import { Loader2, Search, ChevronRight, Plus } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router';
+import { Loader2, Search, ChevronRight, Plus, Tags } from 'lucide-react';
 import { useNewsArticles } from '../hooks/useNewsArticles';
 import { useNewsCategories } from '../hooks/useNewsCategories';
+import { useNewsTags } from '../hooks/useNewsTags';
 import { NewsCard } from '../components/NewsCard';
 import { Link } from '../components/Link';
 import { useAuth } from '../contexts/AuthContext';
 
 export function NewsListPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { articles, loading, pagination, setFilters } = useNewsArticles({
     perPage: 9,
     status: 'published',
@@ -16,33 +18,59 @@ export function NewsListPage() {
     onlyPublishedVisible: true,
   });
   const { categories } = useNewsCategories();
+  const { tags } = useNewsTags();
   const { isAdmin, isEditor } = useAuth();
 
   const [search, setSearch] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [selectedTagSlugs, setSelectedTagSlugs] = useState<string[]>([]);
   const [page, setPage] = useState(1);
 
+  // L'URL est la source de vérité pour les filtres catégorie / étiquettes.
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const category = params.get('category');
-    if (category) {
-      setCategoryId(category);
-      setPage(1);
-    }
+    setCategoryId(category || null);
+    const tagsParam = params.get('tags');
+    setSelectedTagSlugs(tagsParam ? tagsParam.split(',').filter(Boolean) : []);
+    setPage(1);
   }, [location.search]);
+
+  const selectedTagIds = useMemo(
+    () => tags.filter((tag) => selectedTagSlugs.includes(tag.slug)).map((tag) => tag.id),
+    [tags, selectedTagSlugs]
+  );
 
   useEffect(() => {
     setFilters((prev) => ({
       ...prev,
       search,
       categoryId,
+      tagIds: selectedTagIds,
       status: 'published',
       onlyPublished: true,
       onlyPublishedVisible: true,
       perPage: 9,
       page,
     }));
-  }, [search, categoryId, page, setFilters]);
+  }, [search, categoryId, selectedTagIds, page, setFilters]);
+
+  const updateTags = (slugs: string[]) => {
+    const params = new URLSearchParams(location.search);
+    if (slugs.length > 0) {
+      params.set('tags', slugs.join(','));
+    } else {
+      params.delete('tags');
+    }
+    navigate(`/news${params.toString() ? `?${params.toString()}` : ''}`);
+  };
+
+  const toggleTag = (slug: string) => {
+    const next = selectedTagSlugs.includes(slug)
+      ? selectedTagSlugs.filter((s) => s !== slug)
+      : [...selectedTagSlugs, slug];
+    updateTags(next);
+  };
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil((pagination.total || 0) / pagination.perPage)),
@@ -184,6 +212,61 @@ export function NewsListPage() {
                     })}
                   </div>
                 </div>
+
+                {tags.length > 0 && (
+                  <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800">
+                        <Tags className="w-5 h-5 text-[#328fce]" />
+                        Étiquettes
+                      </h2>
+                      {selectedTagSlugs.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => updateTags([])}
+                          className="text-xs font-semibold px-3 py-1 rounded-full border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 transition"
+                        >
+                          Effacer
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Les étiquettes sont des thèmes transverses qui recoupent plusieurs catégories.
+                      Cochez-en plusieurs pour affiner : seuls les articles portant toutes les
+                      étiquettes sélectionnées s'affichent.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {tags.map((tag) => {
+                        const selected = selectedTagSlugs.includes(tag.slug);
+                        return (
+                          <button
+                            key={tag.id}
+                            type="button"
+                            onClick={() => toggleTag(tag.slug)}
+                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition ${
+                              selected
+                                ? 'bg-[#328fce]/10 border-[#328fce]/40 text-[#328fce]'
+                                : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-white hover:border-gray-300'
+                            }`}
+                          >
+                            <span
+                              className={`inline-flex items-center justify-center w-3.5 h-3.5 rounded border ${
+                                selected ? 'bg-[#328fce] border-[#328fce]' : 'border-gray-300'
+                              }`}
+                            >
+                              {selected && (
+                                <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              )}
+                            </span>
+                            {tag.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

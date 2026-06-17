@@ -43,6 +43,7 @@ export interface FetchNewsArticlesOptions {
   perPage?: number;
   search?: string;
   categoryId?: string | null;
+  tagIds?: string[];
   status?: 'all' | NewsStatus;
   onlyPublished?: boolean;
   onlyPublishedVisible?: boolean;
@@ -156,6 +157,7 @@ export function useNewsArticles(initialOptions: FetchNewsArticlesOptions = {}) {
     perPage: initialOptions.perPage ?? DEFAULT_PAGE_SIZE,
     search: initialOptions.search ?? '',
     categoryId: initialOptions.categoryId ?? null,
+    tagIds: initialOptions.tagIds ?? [],
     status: initialOptions.status ?? 'all',
     onlyPublished: initialOptions.onlyPublished ?? false,
     onlyPublishedVisible: initialOptions.onlyPublishedVisible ?? false,
@@ -194,6 +196,36 @@ export function useNewsArticles(initialOptions: FetchNewsArticlesOptions = {}) {
 
         if (merged.categoryId) {
           query = query.eq('category_id', merged.categoryId);
+        }
+
+        // Filtre par étiquettes : article devant porter TOUTES les étiquettes (ET).
+        const tagIds = merged.tagIds ?? [];
+        if (tagIds.length > 0) {
+          const { data: tagRows, error: tagError } = await supabase
+            .from('news_article_tags')
+            .select('article_id, tag_id')
+            .in('tag_id', tagIds);
+
+          if (tagError) throw tagError;
+
+          const countByArticle = new Map<string, Set<string>>();
+          (tagRows || []).forEach((row) => {
+            const set = countByArticle.get(row.article_id) ?? new Set<string>();
+            set.add(row.tag_id);
+            countByArticle.set(row.article_id, set);
+          });
+
+          const matchingIds = Array.from(countByArticle.entries())
+            .filter(([, set]) => set.size === tagIds.length)
+            .map(([articleId]) => articleId);
+
+          if (matchingIds.length === 0) {
+            setArticles([]);
+            setPagination({ page, perPage, total: 0 });
+            return { success: true as const, data: [], pagination: { page, perPage, total: 0 } };
+          }
+
+          query = query.in('id', matchingIds);
         }
 
         if (merged.status && merged.status !== 'all') {

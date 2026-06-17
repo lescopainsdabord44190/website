@@ -169,12 +169,13 @@ export function NewsArticlePage() {
                   {article.tags && article.tags.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {article.tags.map((tag) => (
-                        <span
+                        <Link
                           key={tag.id}
-                          className="px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-gray-200 text-gray-700"
+                          href={`/news?tags=${encodeURIComponent(tag.slug)}`}
+                          className="px-2.5 py-1 rounded-full text-xs font-medium bg-white border border-gray-200 text-gray-700 hover:border-[#328fce] hover:text-[#328fce] transition-colors"
                         >
                           {tag.name}
-                        </span>
+                        </Link>
                       ))}
                     </div>
                   )}

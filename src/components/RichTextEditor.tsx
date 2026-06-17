@@ -16,6 +16,8 @@ import { VolunteerListTool } from '../lib/editorjs-volunteer-list';
 import { CarouselTool } from '../lib/editorjs-carousel';
 import { ColumnsTool } from '../lib/editorjs-columns';
 import { CTATool } from '../lib/editorjs-cta';
+import { TextColorTool } from '../lib/editorjs-text-color';
+import { FileDownloadTool } from '../lib/editorjs-file-download';
 import { editorJSI18nFr } from '../lib/editorjs-i18n-fr';
 
 interface RichTextEditorProps {
@@ -182,6 +184,12 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
           },
           cta: {
             class: CTATool,
+          },
+          file: {
+            class: FileDownloadTool,
+          },
+          textColor: {
+            class: TextColorTool as unknown as any,
           },
         },
         onChange: handleChange,

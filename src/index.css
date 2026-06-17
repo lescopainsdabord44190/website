@@ -401,3 +401,50 @@
 .swiper-pagination-bullet-active {
   @apply bg-[#328fce] scale-125;
 }
+
+/* Couleurs de texte appliquées via l'outil inline EditorJS (charte) */
+.cda-color-brand-blue {
+  color: #328fce;
+}
+.cda-color-brand-green {
+  color: #84c19e;
+}
+.cda-color-brand-pink {
+  color: #ff9fa8;
+}
+.cda-color-brand-yellow {
+  color: #ffbf40;
+}
+.cda-color-brand-orange {
+  color: #ff6243;
+}
+.cda-color-brand-brown {
+  color: #6b3a1f;
+}
+
+/* Nuancier de l'outil inline « Couleur du texte » */
+.cda-color-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  max-width: 160px;
+}
+.cda-color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  border: 2px solid #e5e7eb;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s ease;
+}
+.cda-color-swatch:hover {
+  transform: scale(1.1);
+}
+.cda-color-swatch--default {
+  background-color: #ffffff;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1;
+}
