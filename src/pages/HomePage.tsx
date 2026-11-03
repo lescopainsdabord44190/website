@@ -77,8 +77,10 @@ export function HomePage() {
               <div className="absolute -top-4 -left-4 w-24 h-24 bg-[#ffbf40] rounded-full opacity-50 blur-2xl"></div>
               <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-[#ff9fa8] rounded-full opacity-50 blur-2xl"></div>
               <img
-                src="/photos/team.jpg"
+                src={settings.home_hero_image || '/photos/team.jpg'}
                 alt="L'équipe des Copains d'abord"
+                fetchPriority="high"
+                decoding="async"
                 className="relative rounded-3xl shadow-2xl w-full h-auto object-cover"
               />
             </div>

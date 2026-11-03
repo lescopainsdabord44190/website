@@ -200,6 +200,11 @@ async function main() {
 
   sqlLines.push('SET session_replication_role = origin;');
   sqlLines.push('');
+  sqlLines.push('-- Garantit la présence des clés de paramètres ajoutées récemment');
+  sqlLines.push('INSERT INTO "public"."site_settings" ("key", "value", "description", "type")');
+  sqlLines.push("VALUES ('home_hero_image', '/photos/team.jpg', 'Image principale de la page d''accueil', 'image')");
+  sqlLines.push('ON CONFLICT ("key") DO NOTHING;');
+  sqlLines.push('');
 
   const prodSql = sqlLines.join('\n');
   const localSql = prodSql.replaceAll(PROD_SUPABASE_URL, LOCAL_SUPABASE_URL);

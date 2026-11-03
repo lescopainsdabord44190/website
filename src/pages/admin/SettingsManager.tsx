@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Save, ChevronDown, ChevronUp, Home, MapPin, Share2, Menu, FileText, Plus, X, Upload, ExternalLink, GripVertical } from 'lucide-react';
+import { Save, ChevronDown, ChevronUp, Home, MapPin, Share2, Menu, FileText, Plus, X, Upload, ExternalLink, GripVertical, RotateCcw, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { RichTextEditor } from '../../components/RichTextEditor';
 import { OutputData } from '@editorjs/editorjs';
+import { optimizeImageForUpload, formatFileSize, OptimizedImageResult } from '../../lib/imageOptimizer';
 
 interface Setting {
   id: string;
   key: string;
   value: string;
   description: string;
-  type: 'text' | 'richtext' | 'images';
+  type: 'text' | 'richtext' | 'image' | 'images';
 }
 
 interface ImageItem {
@@ -73,6 +74,8 @@ export function SettingsManager() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(['home'])
   );
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [optimizationStats, setOptimizationStats] = useState<Record<string, OptimizedImageResult>>({});
 
   useEffect(() => {
     fetchSettings();
@@ -86,7 +89,19 @@ export function SettingsManager() {
         .order('key');
 
       if (error) throw error;
-      setSettings(data || []);
+      const loaded: Setting[] = data || [];
+
+      if (!loaded.some((s) => s.key === 'home_hero_image')) {
+        loaded.push({
+          id: 'virtual-home_hero_image',
+          key: 'home_hero_image',
+          value: '/photos/team.jpg',
+          description: 'Image principale de la page d\'accueil',
+          type: 'image',
+        });
+      }
+
+      setSettings(loaded);
     } catch (error) {
       console.error('Error fetching settings:', error);
     } finally {
@@ -100,16 +115,33 @@ export function SettingsManager() {
 
     try {
       for (const setting of settings) {
-        const { error } = await supabase
-          .from('site_settings')
-          .update({
-            value: setting.value,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', setting.id);
+        if (setting.id.startsWith('virtual-')) {
+          const { error } = await supabase
+            .from('site_settings')
+            .upsert(
+              {
+                key: setting.key,
+                value: setting.value,
+                description: setting.description,
+                type: setting.type,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: 'key' }
+            );
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('site_settings')
+            .update({
+              value: setting.value,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', setting.id);
 
-        if (error) throw error;
+          if (error) throw error;
+        }
       }
+      await fetchSettings();
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (error) {
@@ -162,16 +194,34 @@ export function SettingsManager() {
     return settings.filter((setting) => !categorizedKeys.has(setting.key));
   };
 
-  const handleImageUpload = async (file: File, settingKey: string): Promise<string | null> => {
+  const handleImageUpload = async (
+    file: File,
+    settingKey: string,
+    optimizeOptions?: { maxWidth?: number; maxHeight?: number; quality?: number }
+  ): Promise<string | null> => {
+    setUploadingKey(settingKey);
     try {
-      const fileExt = file.name.split('.').pop();
+      let fileToUpload = file;
+      if (optimizeOptions && file.type.startsWith('image/') && file.type !== 'image/svg+xml') {
+        const optimized = await optimizeImageForUpload(file, {
+          maxWidth: optimizeOptions.maxWidth ?? 1600,
+          maxHeight: optimizeOptions.maxHeight ?? 1200,
+          quality: optimizeOptions.quality ?? 0.82,
+          mimeType: 'image/webp',
+        });
+        fileToUpload = optimized.file;
+        setOptimizationStats((prev) => ({ ...prev, [settingKey]: optimized }));
+      }
+
+      const fileExt = fileToUpload.name.split('.').pop();
       const fileName = `${settingKey}_${Date.now()}.${fileExt}`;
       const filePath = `content/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('page_assets')
-        .upload(filePath, file, {
+        .upload(filePath, fileToUpload, {
           cacheControl: '3600',
+          contentType: fileToUpload.type,
           upsert: false,
         });
 
@@ -186,7 +236,129 @@ export function SettingsManager() {
       console.error('Error uploading image:', error);
       alert('Erreur lors de l\'upload de l\'image');
       return null;
+    } finally {
+      setUploadingKey(null);
     }
+  };
+
+  const renderSingleImageEditor = (setting: Setting) => {
+    const defaultHeroImage = '/photos/team.jpg';
+    const currentImageUrl = setting.value || defaultHeroImage;
+    const isUploading = uploadingKey === setting.key;
+    const stats = optimizationStats[setting.key];
+
+    const handleSingleFileSelect = async (file: File) => {
+      const uploadedUrl = await handleImageUpload(file, setting.key, {
+        maxWidth: 1600,
+        maxHeight: 1200,
+        quality: 0.82,
+      });
+      if (uploadedUrl) {
+        updateSetting(setting.key, uploadedUrl);
+      }
+    };
+
+    return (
+      <div key={setting.id} className="bg-white rounded-lg p-4 border border-gray-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              {setting.description || setting.key}
+            </label>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Redimensionnée automatiquement (max 1600×1200 px) et convertie en WebP (qualité 82%) avant envoi.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {setting.value && setting.value !== defaultHeroImage && (
+              <button
+                type="button"
+                onClick={() => {
+                  updateSetting(setting.key, defaultHeroImage);
+                  setOptimizationStats((prev) => {
+                    const next = { ...prev };
+                    delete next[setting.key];
+                    return next;
+                  });
+                }}
+                className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-2 rounded-lg transition-colors"
+                title="Restaurer la photo d'équipe par défaut"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Image par défaut
+              </button>
+            )}
+            <label
+              className={`flex items-center gap-2 cursor-pointer bg-[#328fce] hover:bg-[#84c19e] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                isUploading ? 'opacity-60 pointer-events-none' : ''
+              }`}
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Optimisation & envoi...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  Changer l'image
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                disabled={isUploading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleSingleFileSelect(file);
+                  e.target.value = '';
+                }}
+                className="hidden"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="mt-3 bg-gray-50 rounded-xl p-4 border border-gray-200 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <img
+            src={currentImageUrl}
+            alt={setting.description || 'Aperçu'}
+            className="w-full sm:w-64 h-40 object-cover rounded-xl shadow-sm border border-gray-200 bg-white"
+          />
+          <div className="flex-1 space-y-2 text-xs text-gray-600">
+            <div>
+              <span className="font-medium text-gray-700">URL actuelle : </span>
+              <span className="break-all font-mono text-gray-500">{currentImageUrl}</span>
+            </div>
+            {stats && (
+              <div className="inline-flex items-center gap-1.5 bg-green-50 text-green-800 border border-green-200 px-3 py-1.5 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                <span>
+                  Image optimisée en WebP ({stats.width}×{stats.height} px) :{' '}
+                  <strong>{formatFileSize(stats.compressedSize)}</strong> au lieu de{' '}
+                  {formatFileSize(stats.originalSize)}
+                  {stats.originalSize > stats.compressedSize && (
+                    <>
+                      {' '}
+                      (-
+                      {Math.round(
+                        ((stats.originalSize - stats.compressedSize) / stats.originalSize) * 100
+                      )}
+                      %)
+                    </>
+                  )}
+                </span>
+              </div>
+            )}
+            <p className="text-gray-500">
+              Pensez à cliquer sur <strong>Enregistrer</strong> en haut de la page pour appliquer la nouvelle image sur l'accueil.
+            </p>
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-500 mt-2">Clé: {setting.key}</p>
+      </div>
+    );
   };
 
   const renderImageCollectionEditor = (setting: Setting) => {
@@ -347,6 +519,10 @@ export function SettingsManager() {
   };
 
   const renderSettingInput = (setting: Setting) => {
+    if (setting.type === 'image' || setting.key === 'home_hero_image') {
+      return renderSingleImageEditor(setting);
+    }
+
     if (setting.type === 'images') {
       return renderImageCollectionEditor(setting);
     }
