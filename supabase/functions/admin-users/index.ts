@@ -490,7 +490,7 @@ Deno.serve(async (req: Request) => {
         if (inviteError) {
           return jsonResponse<ErrorResponse>(400, {
             success: false,
-            error: 'Impossible de renvoyer l'invitation',
+            error: 'Impossible de renvoyer l’invitation',
             details: inviteError.message,
           });
         }

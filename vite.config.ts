@@ -8,8 +8,15 @@ export default defineConfig({
     exclude: ['lucide-react'],
   },
   server: {
+    host: '::',
+    port: 8080,
     hmr: {
       overlay: true,
+    },
+    watch: {
+      usePolling: true,
+      interval: 1000,
+      ignored: ['**/supabase/**', '**/scripts/**', '**/dist/**'],
     },
   },
 });

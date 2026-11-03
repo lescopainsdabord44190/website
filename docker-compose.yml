@@ -1,0 +1,19 @@
+services:
+  # Application principale (React + Vite)
+  app:
+    image: node:26-slim
+    working_dir: /app
+    user: "${UID:-1000}:${GID:-1000}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - .:/app
+    ports:
+      - "3450:8080"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+    command: sh -c "npm run dev"
+    stop_grace_period: 1s
+    restart: unless-stopped

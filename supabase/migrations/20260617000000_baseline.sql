@@ -1534,33 +1534,183 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
 
+--
+-- Storage Buckets (iso-prod)
+--
 
+INSERT INTO "storage"."buckets" ("id", "name", "public")
+VALUES
+  ('avatars', 'avatars', true),
+  ('counselor_photos', 'counselor_photos', true),
+  ('news', 'news', true),
+  ('page_assets', 'page_assets', true),
+  ('page-images', 'page-images', true),
+  ('project_images', 'project_images', true),
+  ('volunteer_photos', 'volunteer_photos', true)
+ON CONFLICT ("id") DO UPDATE SET "public" = EXCLUDED."public";
 
+--
+-- Storage RLS Policies on storage.objects (iso-prod)
+--
 
+DROP POLICY IF EXISTS "Public can view avatars" ON "storage"."objects";
+CREATE POLICY "Public can view avatars"
+  ON "storage"."objects" FOR SELECT TO "public"
+  USING ("bucket_id" = 'avatars');
 
+DROP POLICY IF EXISTS "Users can upload their own avatar" ON "storage"."objects";
+CREATE POLICY "Users can upload their own avatar"
+  ON "storage"."objects" FOR INSERT TO "authenticated"
+  WITH CHECK (("bucket_id" = 'avatars') AND (("storage"."foldername"("name"))[1] = ("auth"."uid"())::text));
 
+DROP POLICY IF EXISTS "Users can update their own avatar" ON "storage"."objects";
+CREATE POLICY "Users can update their own avatar"
+  ON "storage"."objects" FOR UPDATE TO "authenticated"
+  USING (("bucket_id" = 'avatars') AND (("storage"."foldername"("name"))[1] = ("auth"."uid"())::text))
+  WITH CHECK (("bucket_id" = 'avatars') AND (("storage"."foldername"("name"))[1] = ("auth"."uid"())::text));
 
+DROP POLICY IF EXISTS "Users can delete their own avatar" ON "storage"."objects";
+CREATE POLICY "Users can delete their own avatar"
+  ON "storage"."objects" FOR DELETE TO "authenticated"
+  USING (("bucket_id" = 'avatars') AND (("storage"."foldername"("name"))[1] = ("auth"."uid"())::text));
 
+DROP POLICY IF EXISTS "Admins can upload avatars" ON "storage"."objects";
+CREATE POLICY "Admins can upload avatars"
+  ON "storage"."objects" FOR INSERT TO "authenticated"
+  WITH CHECK (("bucket_id" = 'avatars') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
 
+DROP POLICY IF EXISTS "Admins can update avatars" ON "storage"."objects";
+CREATE POLICY "Admins can update avatars"
+  ON "storage"."objects" FOR UPDATE TO "authenticated"
+  USING (("bucket_id" = 'avatars') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))))
+  WITH CHECK (("bucket_id" = 'avatars') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
 
+DROP POLICY IF EXISTS "Admins can delete avatars" ON "storage"."objects";
+CREATE POLICY "Admins can delete avatars"
+  ON "storage"."objects" FOR DELETE TO "authenticated"
+  USING (("bucket_id" = 'avatars') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
 
+DROP POLICY IF EXISTS "Public can view counselor photos" ON "storage"."objects";
+CREATE POLICY "Public can view counselor photos"
+  ON "storage"."objects" FOR SELECT TO "public"
+  USING ("bucket_id" = 'counselor_photos');
 
+DROP POLICY IF EXISTS "Admins can upload counselor photos" ON "storage"."objects";
+CREATE POLICY "Admins can upload counselor photos"
+  ON "storage"."objects" FOR INSERT TO "authenticated"
+  WITH CHECK (("bucket_id" = 'counselor_photos') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
 
+DROP POLICY IF EXISTS "Admins can update counselor photos" ON "storage"."objects";
+CREATE POLICY "Admins can update counselor photos"
+  ON "storage"."objects" FOR UPDATE TO "authenticated"
+  USING (("bucket_id" = 'counselor_photos') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))))
+  WITH CHECK (("bucket_id" = 'counselor_photos') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
 
+DROP POLICY IF EXISTS "Admins can delete counselor photos" ON "storage"."objects";
+CREATE POLICY "Admins can delete counselor photos"
+  ON "storage"."objects" FOR DELETE TO "authenticated"
+  USING (("bucket_id" = 'counselor_photos') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
 
+DROP POLICY IF EXISTS "Public can view news images" ON "storage"."objects";
+CREATE POLICY "Public can view news images"
+  ON "storage"."objects" FOR SELECT TO "public"
+  USING ("bucket_id" = 'news');
 
+DROP POLICY IF EXISTS "Admins and editors can insert news images" ON "storage"."objects";
+CREATE POLICY "Admins and editors can insert news images"
+  ON "storage"."objects" FOR INSERT TO "authenticated"
+  WITH CHECK (("bucket_id" = 'news') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = ANY (ARRAY['admin', 'editor'])))));
 
+DROP POLICY IF EXISTS "Admins and editors can update news images" ON "storage"."objects";
+CREATE POLICY "Admins and editors can update news images"
+  ON "storage"."objects" FOR UPDATE TO "authenticated"
+  USING (("bucket_id" = 'news') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = ANY (ARRAY['admin', 'editor'])))))
+  WITH CHECK (("bucket_id" = 'news') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = ANY (ARRAY['admin', 'editor'])))));
 
+DROP POLICY IF EXISTS "Admins and editors can delete news images" ON "storage"."objects";
+CREATE POLICY "Admins and editors can delete news images"
+  ON "storage"."objects" FOR DELETE TO "authenticated"
+  USING (("bucket_id" = 'news') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = ANY (ARRAY['admin', 'editor'])))));
 
+DROP POLICY IF EXISTS "Anyone can read page assets" ON "storage"."objects";
+CREATE POLICY "Anyone can read page assets"
+  ON "storage"."objects" FOR SELECT TO "public"
+  USING ("bucket_id" = 'page_assets');
 
+DROP POLICY IF EXISTS "Authenticated users can upload page assets" ON "storage"."objects";
+CREATE POLICY "Authenticated users can upload page assets"
+  ON "storage"."objects" FOR INSERT TO "public"
+  WITH CHECK (("bucket_id" = 'page_assets') AND ("auth"."role"() = 'authenticated'));
 
+DROP POLICY IF EXISTS "Authenticated users can update page assets" ON "storage"."objects";
+CREATE POLICY "Authenticated users can update page assets"
+  ON "storage"."objects" FOR UPDATE TO "public"
+  USING (("bucket_id" = 'page_assets') AND ("auth"."role"() = 'authenticated'));
 
+DROP POLICY IF EXISTS "Authenticated users can delete page assets" ON "storage"."objects";
+CREATE POLICY "Authenticated users can delete page assets"
+  ON "storage"."objects" FOR DELETE TO "public"
+  USING (("bucket_id" = 'page_assets') AND ("auth"."role"() = 'authenticated'));
 
+DROP POLICY IF EXISTS "Public can view page images" ON "storage"."objects";
+CREATE POLICY "Public can view page images"
+  ON "storage"."objects" FOR SELECT TO "public"
+  USING ("bucket_id" = 'page-images');
 
+DROP POLICY IF EXISTS "Admins can upload page images" ON "storage"."objects";
+CREATE POLICY "Admins can upload page images"
+  ON "storage"."objects" FOR INSERT TO "authenticated"
+  WITH CHECK (("bucket_id" = 'page-images') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
 
+DROP POLICY IF EXISTS "Admins can update page images" ON "storage"."objects";
+CREATE POLICY "Admins can update page images"
+  ON "storage"."objects" FOR UPDATE TO "authenticated"
+  USING (("bucket_id" = 'page-images') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))))
+  WITH CHECK (("bucket_id" = 'page-images') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
 
+DROP POLICY IF EXISTS "Admins can delete page images" ON "storage"."objects";
+CREATE POLICY "Admins can delete page images"
+  ON "storage"."objects" FOR DELETE TO "authenticated"
+  USING (("bucket_id" = 'page-images') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
 
+DROP POLICY IF EXISTS "Public can view project images" ON "storage"."objects";
+CREATE POLICY "Public can view project images"
+  ON "storage"."objects" FOR SELECT TO "public"
+  USING ("bucket_id" = 'project_images');
 
+DROP POLICY IF EXISTS "Admins can upload project images" ON "storage"."objects";
+CREATE POLICY "Admins can upload project images"
+  ON "storage"."objects" FOR INSERT TO "authenticated"
+  WITH CHECK (("bucket_id" = 'project_images') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
 
+DROP POLICY IF EXISTS "Admins can update project images" ON "storage"."objects";
+CREATE POLICY "Admins can update project images"
+  ON "storage"."objects" FOR UPDATE TO "authenticated"
+  USING (("bucket_id" = 'project_images') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))))
+  WITH CHECK (("bucket_id" = 'project_images') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
 
+DROP POLICY IF EXISTS "Admins can delete project images" ON "storage"."objects";
+CREATE POLICY "Admins can delete project images"
+  ON "storage"."objects" FOR DELETE TO "authenticated"
+  USING (("bucket_id" = 'project_images') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
 
+DROP POLICY IF EXISTS "Public can view volunteer photos" ON "storage"."objects";
+CREATE POLICY "Public can view volunteer photos"
+  ON "storage"."objects" FOR SELECT TO "public"
+  USING ("bucket_id" = 'volunteer_photos');
+
+DROP POLICY IF EXISTS "Admins can upload volunteer photos" ON "storage"."objects";
+CREATE POLICY "Admins can upload volunteer photos"
+  ON "storage"."objects" FOR INSERT TO "authenticated"
+  WITH CHECK (("bucket_id" = 'volunteer_photos') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
+
+DROP POLICY IF EXISTS "Admins can update volunteer photos" ON "storage"."objects";
+CREATE POLICY "Admins can update volunteer photos"
+  ON "storage"."objects" FOR UPDATE TO "authenticated"
+  USING (("bucket_id" = 'volunteer_photos') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))))
+  WITH CHECK (("bucket_id" = 'volunteer_photos') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
+
+DROP POLICY IF EXISTS "Admins can delete volunteer photos" ON "storage"."objects";
+CREATE POLICY "Admins can delete volunteer photos"
+  ON "storage"."objects" FOR DELETE TO "authenticated"
+  USING (("bucket_id" = 'volunteer_photos') AND (EXISTS (SELECT 1 FROM "public"."user_roles" WHERE ("user_roles"."user_id" = "auth"."uid"()) AND ("user_roles"."role" = 'admin'))));
