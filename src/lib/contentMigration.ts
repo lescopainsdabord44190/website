@@ -54,7 +54,7 @@ export function migrateOldContentToEditorJS(oldContent: unknown): OutputData | n
     }
 
     return null;
-  }).filter(Boolean);
+  }).filter((block): block is NonNullable<typeof block> => Boolean(block));
 
   return {
     time: Date.now(),

@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       (async () => {
         setSession(session);
         setUser(session?.user ?? null);
@@ -208,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const primaryRole = determinePrimaryRole(normalizedRoles);
 
         identifyUser(data.user.id, {
-          email: data.user.email,
+          email: data.user.email ?? null,
           roles: normalizedRoles.length > 0 ? normalizedRoles.join(',') : null,
           [TrackingProperty.USER_ROLE]: primaryRole,
         });

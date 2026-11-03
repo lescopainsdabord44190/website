@@ -200,14 +200,12 @@ const getToolsConfig = () => ({
 
 export class ColumnsTool implements BlockTool {
   private data: ColumnsData;
-  private api: API;
   private readOnly: boolean;
   private wrapper: HTMLElement;
   private editors: EditorJS[] = [];
   private editorContainers: HTMLElement[] = [];
 
   constructor({ data, api, readOnly }: ColumnsToolConstructorArgs) {
-    this.api = api;
     void api; // Utilisé pour la compatibilité avec l'interface
     this.readOnly = Boolean(readOnly);
     this.wrapper = document.createElement('div');

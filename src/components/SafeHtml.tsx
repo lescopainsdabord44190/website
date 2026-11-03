@@ -1,9 +1,10 @@
+import type { ElementType } from 'react';
 import DOMPurify from 'dompurify';
 
 interface SafeHtmlProps {
   html: string;
   className?: string;
-  as?: keyof JSX.IntrinsicElements;
+  as?: ElementType;
   id?: string;
 }
 

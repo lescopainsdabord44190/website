@@ -29,14 +29,13 @@ const BUCKET_NAME = 'page_assets';
 export class CarouselTool implements BlockTool {
   private images: CarouselItem[];
   private autoplay: boolean;
-  private api: API;
   private readOnly: boolean;
   private wrapper: HTMLElement;
   private data: CarouselData;
   private draggingId: string | null;
 
   constructor({ data, api, readOnly }: CarouselToolConstructorArgs) {
-    this.api = api;
+    void api;
     this.readOnly = Boolean(readOnly);
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('editorjs-carousel');
@@ -324,7 +323,7 @@ export class CarouselTool implements BlockTool {
   private async handleFilesUpload(files: File[]) {
     if (!files.length) return;
 
-    const placeholders = files.map((file) => ({
+    const placeholders: CarouselItem[] = files.map((file) => ({
       id: this.generateId(),
       url: '',
       caption: '',

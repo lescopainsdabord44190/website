@@ -2,7 +2,7 @@ import { Link } from './Link';
 import { useSiteSettings } from '../hooks/useSiteSettings';
 import { usePages, buildFullPath } from '../hooks/usePages';
 import { useAuth } from '../contexts/AuthContext';
-import { Menu, X, LogOut, Settings, User, LogIn, Home, Newspaper } from 'lucide-react';
+import { Menu, X, LogOut, Settings, User, LogIn, Home } from 'lucide-react';
 import { useState } from 'react';
 import { UserMenu } from './UserMenu';
 

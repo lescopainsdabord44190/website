@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export function ProjectPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { user, isAdmin, isEditor, loading: authLoading } = useAuth();
+  const { isAdmin, isEditor, loading: authLoading } = useAuth();
   const canManageProjects = isAdmin || isEditor;
   const { project, loading } = useProjectBySlug(slug, { includeInactive: canManageProjects });
 

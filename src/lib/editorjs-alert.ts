@@ -1,5 +1,4 @@
 export class Alert {
-  private api: any;
   private readOnly: boolean;
   private data: {
     type: 'info' | 'success' | 'warning' | 'danger';
@@ -15,8 +14,7 @@ export class Alert {
     };
   }
 
-  constructor({ data, api, readOnly }: any) {
-    this.api = api;
+  constructor({ data, readOnly }: { data: Partial<Alert['data']>; api?: unknown; readOnly: boolean }) {
     this.readOnly = readOnly;
     this.data = {
       type: data.type || 'info',
@@ -104,7 +102,7 @@ export class Alert {
     });
   }
 
-  private _createInput(name: string, placeholder: string, value: string) {
+  private _createInput(name: 'title' | 'message', placeholder: string, value: string) {
     const input = document.createElement('div');
     input.classList.add('cdx-input');
     input.contentEditable = String(!this.readOnly);
@@ -112,7 +110,7 @@ export class Alert {
     input.textContent = value;
 
     input.addEventListener('blur', () => {
-      this.data[name as keyof typeof this.data] = input.textContent || '';
+      this.data[name] = input.textContent || '';
     });
 
     return input;

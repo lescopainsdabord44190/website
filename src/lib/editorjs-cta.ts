@@ -74,14 +74,13 @@ const AVAILABLE_ICONS = [
 
 export class CTATool implements BlockTool {
   private data: CTAData;
-  private api: API;
   private readOnly: boolean;
   private wrapper: HTMLElement;
   private pages: Page[] = [];
   private pagesLoading: boolean = false;
 
   constructor({ data, api, readOnly }: CTAToolConstructorArgs) {
-    this.api = api;
+    void api;
     this.readOnly = Boolean(readOnly);
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('editorjs-cta');

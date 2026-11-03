@@ -1,54 +1,54 @@
 declare module '@editorjs/header' {
-  import { BlockTool } from '@editorjs/editorjs';
-  const Header: BlockTool;
+  import { BlockToolConstructable } from '@editorjs/editorjs';
+  const Header: BlockToolConstructable;
   export default Header;
 }
 
 declare module '@editorjs/list' {
-  import { BlockTool } from '@editorjs/editorjs';
-  const List: BlockTool;
+  import { BlockToolConstructable } from '@editorjs/editorjs';
+  const List: BlockToolConstructable;
   export default List;
 }
 
 declare module '@editorjs/image' {
-  import { BlockTool } from '@editorjs/editorjs';
-  const ImageTool: BlockTool;
+  import { BlockToolConstructable } from '@editorjs/editorjs';
+  const ImageTool: BlockToolConstructable;
   export default ImageTool;
 }
 
 declare module '@editorjs/quote' {
-  import { BlockTool } from '@editorjs/editorjs';
-  const Quote: BlockTool;
+  import { BlockToolConstructable } from '@editorjs/editorjs';
+  const Quote: BlockToolConstructable;
   export default Quote;
 }
 
 declare module '@editorjs/delimiter' {
-  import { BlockTool } from '@editorjs/editorjs';
-  const Delimiter: BlockTool;
+  import { BlockToolConstructable } from '@editorjs/editorjs';
+  const Delimiter: BlockToolConstructable;
   export default Delimiter;
 }
 
 declare module '@editorjs/table' {
-  import { BlockTool } from '@editorjs/editorjs';
-  const Table: BlockTool;
+  import { BlockToolConstructable } from '@editorjs/editorjs';
+  const Table: BlockToolConstructable;
   export default Table;
 }
 
 declare module '@editorjs/warning' {
-  import { BlockTool } from '@editorjs/editorjs';
-  const Warning: BlockTool;
+  import { BlockToolConstructable } from '@editorjs/editorjs';
+  const Warning: BlockToolConstructable;
   export default Warning;
 }
 
 declare module '@editorjs/checklist' {
-  import { BlockTool } from '@editorjs/editorjs';
-  const Checklist: BlockTool;
+  import { BlockToolConstructable } from '@editorjs/editorjs';
+  const Checklist: BlockToolConstructable;
   export default Checklist;
 }
 
 declare module '@editorjs/paragraph' {
-  import { BlockTool } from '@editorjs/editorjs';
-  const Paragraph: BlockTool;
+  import { BlockToolConstructable } from '@editorjs/editorjs';
+  const Paragraph: BlockToolConstructable;
   export default Paragraph;
 }
 

@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
 @font-face {
   font-family: 'Brother 1815 Printed';
@@ -328,7 +327,7 @@
 .editorjs-columns-with-theme .cdx-alert,
 .editorjs-columns-with-theme .ce-block__content,
 .editorjs-columns-with-theme .tc-cell {
-  @apply text-white !important;
+  @apply text-white!;
 }
 
 .editorjs-columns-with-theme .ce-toolbar__plus,

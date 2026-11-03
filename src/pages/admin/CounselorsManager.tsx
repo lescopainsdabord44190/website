@@ -314,13 +314,6 @@ function SortableCounselorCard({
     boxShadow: isDragging ? '0 8px 22px rgba(50, 143, 206, 0.25)' : undefined,
   };
 
-  const activeProjects =
-    counselor.projects
-      ?.map((link) => link.project)
-      .filter((project): project is NonNullable<(typeof counselor.projects)[number]['project']> =>
-        Boolean(project?.is_active)
-      ) ?? [];
-
   const isMobileMenuOpen = mobileActionsId === counselor.id;
 
   return (
@@ -438,13 +431,6 @@ function ArchivedCounselorCard({
   onEdit,
   onDelete,
 }: ArchivedCounselorCardProps) {
-  const activeProjects =
-    counselor.projects
-      ?.map((link) => link.project)
-      .filter((project): project is NonNullable<(typeof counselor.projects)[number]['project']> =>
-        Boolean(project?.is_active)
-      ) ?? [];
-
   const isMobileMenuOpen = mobileActionsId === counselor.id;
 
   return (

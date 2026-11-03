@@ -94,9 +94,9 @@ export function ProjectEditor() {
           setSlugTouched(true);
 
           if (Array.isArray(data.project_counselors)) {
-            const selections = data.project_counselors.reduce<
-              Record<string, { selected: boolean; role: string }>
-            >((acc, link) => {
+            const selections = (
+              data.project_counselors as Array<{ counselor_id?: string | null; role?: string | null }>
+            ).reduce<Record<string, { selected: boolean; role: string }>>((acc, link) => {
               if (!link.counselor_id) return acc;
               acc[link.counselor_id] = {
                 selected: true,

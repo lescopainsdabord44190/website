@@ -244,7 +244,7 @@ export function useNewsArticles(initialOptions: FetchNewsArticlesOptions = {}) {
         const rangeStart = (page - 1) * perPage;
         const rangeEnd = rangeStart + perPage - 1;
 
-        query = query.order('published_at', { ascending: false, nullsLast: true });
+        query = query.order('published_at', { ascending: false, nullsFirst: false });
 
         const { data, error: fetchError, count } = await query.range(rangeStart, rangeEnd);
         if (fetchError) throw fetchError;
